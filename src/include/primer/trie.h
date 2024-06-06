@@ -47,6 +47,7 @@ class TrieNode {
   TrieNode() = default;
 
   // Create a TrieNode with some children.
+  // explicit关键字用于阻止C++进行隐式类型转换，强制要求传入参数的类型必须符合声明
   explicit TrieNode(std::map<char, std::shared_ptr<const TrieNode>> children) : children_(std::move(children)) {}
 
   virtual ~TrieNode() = default;
@@ -58,7 +59,17 @@ class TrieNode {
   // contains a value or not.
   //
   // Note: if you want to convert `unique_ptr` into `shared_ptr`, you can use `std::shared_ptr<T>(std::move(ptr))`.
-  virtual auto Clone() const -> std::unique_ptr<TrieNode> { return std::make_unique<TrieNode>(children_); }
+
+  /*
+  auto 函数() -> 类型{…} 作用是推导出函数的返回类型
+  和 auto 函数() {…} 等价
+  优点: 可读性：尾返回类型形式更加明确，能够清晰地表明函数的返回类型
+  */
+  virtual auto Clone() const -> std::unique_ptr<TrieNode>
+  {
+	  // 使用 std::make_unique 创建一个新的 TrieNode 对象，并传递当前节点的 children_ 作为参数。
+	  return std::make_unique<TrieNode>(children_);
+  }
 
   // A map of children, where the key is the next character in the key, and the value is the next TrieNode.
   // You MUST store the children information in this structure. You are NOT allowed to remove the `const` from
