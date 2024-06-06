@@ -21,7 +21,7 @@ auto Trie::Get(std::string_view key) const -> const T * {
 		node = node->children_.at(ch);
 	}
 
-	TrieNodeWithValue<T> const *value_node = dynamic_cast<TrieNodeWithValue<T>*>(node.get());
+	TrieNodeWithValue<T> const *value_node = dynamic_cast<const TrieNodeWithValue<T>*>(node.get());
 	if(value_node != nullptr)
 		return value_node->value_.get();
 	return nullptr;
@@ -33,7 +33,92 @@ auto Trie::Get(std::string_view key) const -> const T * {
     // dynamic_cast returns `nullptr`, it means the type of the value is mismatched, and you should return nullptr.
     // Otherwise, return the value.
 }
+//put的递归方法
+// Put：递归方法具体实现
+template <class T>
+void PutCycle(const std::shared_ptr<bustub::TrieNode> &new_root, std::string_view key, T value) {
+  // 判断元素是否为空的标志位
+    bool flag = false;
+  // 在new_root的children找key的第一个元素
+    // 利用for(auto &a:b)循环体中修改a，b中对应内容也会修改及pair的特性
+  for (auto &pair : new_root->children_) {
+      // 如果找到了
+      if (key.at(0) == pair.first) {
+        flag = true;
+      // 剩余键长度大于1
+        if (key.size() > 1) {
+        // 复制一份找到的子节点，然后递归对其写入
+        std::shared_ptr<TrieNode> ptr = pair.second->Clone();
+        // 递归写入 .substr(1,key.size()-1)也可以
+        // 主要功能是复制子字符串，要求从指定位置开始，并具有指定的长度。
+        PutCycle<T>(ptr, key.substr(1), std::move(value));
+        // 覆盖原本的子节点
+        pair.second = std::shared_ptr<const TrieNode>(ptr);
+      } else {
+          // 剩余键长度小于等于1，则直接插入
+          // 创建新的带value的子节点
+          std::shared_ptr<T> val_p = std::make_shared<T>(std::move(value));
+          TrieNodeWithValue node_with_val(pair.second->children_, val_p);
+          // 覆盖原本的子节点
+          pair.second = std::make_shared<const TrieNodeWithValue<T>>(node_with_val);
+        }
+      return;
+      }
+    }
+  if (!flag) {
+      // 没找到，则新建一个子节点
+      char c = key.at(0);
+      // 如果为键的最后一个元素
+      if (key.size() == 1) {
+        // 直接插入children
+      std::shared_ptr<T> val_p = std::make_shared<T>(std::move(value));
+        new_root->children_.insert({c, std::make_shared<const TrieNodeWithValue<T>>(val_p)});
+    } else {
+      // 创建一个空的children节点
+        auto ptr = std::make_shared<TrieNode>();
+      // 递归
+        PutCycle<T>(ptr, key.substr(1), std::move(value));
+      // 插入
+        new_root->children_.insert({c, std::move(ptr)});
+    }
+  }
+}
 
+template <class T>
+auto Trie::Put(std::string_view key, T value) const -> Trie {
+  // 第一种情况：值要放在根节点中，无根造根，有根放值
+    // 更改根节点的值，即测试中的 trie = trie.Put<uint32_t>("", 123);key为空
+  if (key.empty()) {
+      std::shared_ptr<T> val_p = std::make_shared<T>(std::move(value));
+      // 建立新根
+      std::unique_ptr<TrieNodeWithValue<T>> new_root = nullptr;
+      // 如果原根节点无子节点
+      if (root_->children_.empty()) {
+        // 直接修改根节点
+      new_root = std::make_unique<TrieNodeWithValue<T>>(std::move(val_p));
+      } else {
+        // 如果有，把原根的关系转移给新根：root_的children改为newRoot的children
+      // 这里看tire.h里TireNodeWithValue方法，可以看到，传入不同数量的参数，对应实现不同的方法。
+        new_root = std::make_unique<TrieNodeWithValue<T>>(root_->children_, std::move(val_p));
+    }
+    // 返回新的Trie
+    return Trie(std::move(new_root));
+  }
+    // 第二种情况：值不放在根节点中
+  // 2.1 根节点如果为空，新建一个空的TrieNode;
+    // 2.2 如果不为空，调用clone方法复制根节点
+  std::shared_ptr<TrieNode> new_root = nullptr;
+    if (root_ == nullptr) {
+    new_root = std::make_unique<TrieNode>();
+  } else {
+      new_root = root_->Clone();
+    }
+  // 递归插入，传递根节点，要放的路径：key, 要放入的值：value
+    PutCycle<T>(new_root, key, std::move(value));
+  // 返回新的Trie
+    return Trie(std::move(new_root));
+}
+/*
 template <class T>
 auto Trie::Put(std::string_view key, T value) const -> Trie {
 
@@ -64,7 +149,7 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 	// You should walk through the trie and create new nodes if necessary. If the node corresponding to the key already
 	// exists, you should create a new `TrieNodeWithValue`.
 }
-
+*/
 auto Trie::Remove(std::string_view key) const -> Trie {
 
 //	std::cout<<"----------------I'm here---------------"<<std::endl;
