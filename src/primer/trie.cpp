@@ -2,6 +2,8 @@
 #include <string_view>
 #include "common/exception.h"
 
+#define NO_DEBUG
+
 namespace bustub {
 
 void dfs(std::shared_ptr<const TrieNode> root, int dep=0)
@@ -21,9 +23,9 @@ auto Trie::Get(std::string_view key) const -> const T * {
 	dynamic_cast 是 C++ 中用于在运行时进行类型安全的类型转换操作符。它主要用于将基类的指针或引用转换为派生类的指针或引用。
 	dynamic_cast 只能用于包含多态类型（即具有虚函数）的类，并且会在运行时检查转换是否成功。
 	*/
-//	throw NotImplementedException("Trie::Put is not implemented.");
-
-//	std::cout<<"Get: "<<key<<std::endl;
+#ifndef NO_DEBUG
+	std::cout<<"Get: "<<key<<std::endl;
+#endif
 
 	std::shared_ptr<const TrieNode> node = root_;
 
@@ -38,11 +40,7 @@ auto Trie::Get(std::string_view key) const -> const T * {
 	if(value_node != nullptr)
 		return value_node->value_.get();
 	
-//	std::cout<<"Get return nullptr"<<std::endl;
 	return nullptr;
-
-//	throw NotImplementedException("Trie::Get is not implemented.");
- 
     // You should walk through the trie to find the node corresponding to the key. If the node doesn't exist, return
     // nullptr. After you find the node, you should use `dynamic_cast` to cast it to `const TrieNodeWithValue<T> *`. If
     // dynamic_cast returns `nullptr`, it means the type of the value is mismatched, and you should return nullptr.
@@ -51,8 +49,10 @@ auto Trie::Get(std::string_view key) const -> const T * {
 
 template <class T>
 auto Trie::Put(std::string_view key, T value) const -> Trie {
-	
-//	std::cout<<"Put: "<<key<<std::endl;
+
+#ifndef NO_DEBUG
+	std::cout<<"Put: "<<key<<std::endl;
+#endif
 
 	// 第一种情况：值要放在根节点中，无根造根，有根放值
 	// 更改根节点的值
@@ -60,14 +60,16 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 	{
 		// 新根的值
 		std::shared_ptr<T> new_value = std::make_shared<T>(std::move(value));
-
 		// 建立新根
 		std::unique_ptr<TrieNodeWithValue<T>> new_root = nullptr;
-		
 		// 将原根节点的孩子节点继承给新根，并给新根加上新值
 		new_root = std::make_unique<TrieNodeWithValue<T>>(root_->children_, std::move(new_value));
-		
 		// 返回新的Trie
+		/*
+		在 C++ 中，可以使用 std::unique_ptr 给需要 std::shared_ptr 类型的参数传递，但需要进行适当的转换。
+		由于 std::unique_ptr 是独占所有权的指针，不能直接赋值给 std::shared_ptr。
+		但是你可以通过使用 std::move 将 std::unique_ptr 转换为 std::shared_ptr。
+		*/
 		return Trie(std::move(new_root));
 	}
 
@@ -80,8 +82,6 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 	else
 		new_root = root_->Clone();
 
-	// 递归插入，传递根节点，要放的路径：key, 要放入的值：value
-    // PutCycle<T>(new_root, key, std::move(value));
 	std::shared_ptr<const TrieNode> node = root_;
 	std::shared_ptr<TrieNode> new_node = new_root;
 	std::shared_ptr<TrieNode> new_par_node = nullptr;
@@ -89,7 +89,6 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 	char last_ch;
 	for(auto ch : key)
 	{
-//		std::cout<<"ch="<<ch<<std::endl;
 		if(node != nullptr && node->children_.find(ch) != node->children_.end())
 		{
 			new_node->children_[ch] = std::const_pointer_cast<TrieNode>( node->children_.find(ch)->second )->Clone();
@@ -100,7 +99,6 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 		else
 		{
 			node = nullptr;
-//			std::cout<<"node is nullptr"<<std::endl;
 			new_node->children_[ch] = std::make_shared<TrieNode>();
 		}
 		last_ch = ch;
@@ -119,21 +117,58 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
     // 覆盖原本的子节点
     new_par_node->children_[last_ch] = std::make_shared<const TrieNodeWithValue<T>>(new_value_node);
 
-//	dfs(new_root);
-
 	// 返回新的Trie
     return Trie(std::move(new_root));
 }
 
 auto Trie::Remove(std::string_view key) const -> Trie {
 
-//	std::cout<<"----------------I'm here---------------"<<std::endl;
-//	while(1);
+#ifndef NO_DEBUG
+	std::cout<<"Remove: "<<key<<std::endl;
+#endif
 
+	std::shared_ptr<const TrieNode> node = root_;
+	std::shared_ptr<TrieNode> new_node = root_->Clone();
+	
+	std::vector<std::shared_ptr<TrieNode>> new_nodes;
+	new_nodes.push_back(new_node);
+	int key_pos = key.length()-1;
+	
+	for(auto ch : key)
+	{
+		new_node->children_[ch] = std::const_pointer_cast<TrieNode>( node->children_.find(ch)->second )->Clone();
+		node = node->children_.at(ch);
+		
+		new_node = std::const_pointer_cast<TrieNode>(new_node->children_[ch]);
+		new_nodes.push_back(new_node);
+	}
+	
+	// 若待删除点无子节点，则删除并递归删除它的祖先
+	if(new_node->children_.size() == 0)
+	{
+		while(new_nodes.size()>1 && new_nodes.back()->children_.size() == 0 && (new_nodes.back()==new_node || new_nodes.back()->is_value_node_==0))
+		{
+			new_nodes.pop_back();
+			new_nodes.back()->children_.erase(key[key_pos--]);
+		}
+		if(new_nodes.size() == 1 && new_nodes.back()->is_value_node_ == 0 && new_nodes.back()->children_.size() == 0)
+			*new_nodes.begin() = nullptr;
+	}
+	// 若待删除点有子节点，则仅将此节点替换为TrieNode
+	else
+	{
+		// 新建一个TrieNode变量替换原有的TrieNodeWithValue
+		std::shared_ptr<TrieNode> insert_node = std::make_shared<TrieNode>(new_node->children_);
+		new_nodes.back() = insert_node;
+		if(new_nodes.size() != 1)
+		{
+			new_nodes.pop_back();
+			new_nodes.back()->children_.at(key[key_pos]) = insert_node;
+		}
+	}
 
-
-	throw NotImplementedException("Trie::Remove is not implemented.");
-
+	// 返回新的Trie
+    return Trie(std::move(*new_nodes.begin()));
 	// You should walk through the trie and remove nodes if necessary. If the node doesn't contain a value any more,
 	// you should convert it to `TrieNode`. If a node doesn't have children any more, you should remove it.
 }
