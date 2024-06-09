@@ -3,6 +3,7 @@
 #include <optional>
 #include <shared_mutex>
 #include <utility>
+#include <condition_variable>
 
 #include "primer/trie.h"
 
@@ -13,6 +14,13 @@ namespace bustub {
 template <class T>
 class ValueGuard {
  public:
+  /*
+  const T &value 是一个常量引用参数，它不会拷贝传递给函数的对象。
+  这意味着传递给ValueGuard构造函数的value参数只是引用了原始对象，而不是创建一个新的对象副本。
+  因此，这里的value是浅拷贝。
+
+  这里的root是深拷贝，root_(std::move(root))会将拷贝过来的root参数的值转移到root_中，和在函数内使用root_=root少了一步root_的隐式初始化的过程
+  */
   ValueGuard(Trie root, const T &value) : root_(std::move(root)), value_(value) {}
   auto operator*() const -> const T & { return value_; }
 
@@ -40,6 +48,7 @@ class TrieStore {
   void Remove(std::string_view key);
 
  private:
+
   // This mutex protects the root. Every time you want to access the trie root or modify it, you
   // will need to take this lock.
   std::mutex root_lock_;
