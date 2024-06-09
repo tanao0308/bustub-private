@@ -65,10 +65,9 @@ class TrieNode {
   和 auto 函数() {…} 等价
   优点: 可读性：尾返回类型形式更加明确，能够清晰地表明函数的返回类型
   */
-  virtual auto Clone() const -> std::unique_ptr<TrieNode>
-  {
-	  // 使用 std::make_unique 创建一个新的 TrieNode 对象，并传递当前节点的 children_ 作为参数。
-	  return std::make_unique<TrieNode>(children_);
+  virtual auto Clone() const -> std::unique_ptr<TrieNode> {
+    // 使用 std::make_unique 创建一个新的 TrieNode 对象，并传递当前节点的 children_ 作为参数。
+    return std::make_unique<TrieNode>(children_);
   }
 
   // A map of children, where the key is the next character in the key, and the value is the next TrieNode.

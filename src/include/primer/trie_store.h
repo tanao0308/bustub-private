@@ -1,9 +1,9 @@
 #pragma once
 
+#include <condition_variable>
 #include <optional>
 #include <shared_mutex>
 #include <utility>
-#include <condition_variable>
 
 #include "primer/trie.h"
 
@@ -48,7 +48,6 @@ class TrieStore {
   void Remove(std::string_view key);
 
  private:
-
   // This mutex protects the root. Every time you want to access the trie root or modify it, you
   // will need to take this lock.
   std::mutex root_lock_;
