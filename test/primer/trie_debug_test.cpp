@@ -40,7 +40,20 @@ TEST(TrieDebugger, TestCase) {
     trie = trie.Put<uint32_t>(key, value);
   }
 
-  // Put a breakpoint here.
+// Put a breakpoint here.
+	std::cout<<"here"<<std::endl;
+	// Q1
+	std::cout<<"Q1: ";
+	auto root = trie.GetRoot();
+	std::cout<<root->children_.size()<<std::endl;
+	// Q2
+	std::cout<<"Q2: ";
+	auto node = root->children_.at('9');
+	std::cout<<node->children_.size()<<std::endl;
+	// Q3
+	std::cout<<"Q3: ";
+	std::cout<<*trie.Get<uint32_t>("969")<<std::endl;
+	node = node->children_.at('6')->children_.at('9');
 
   // (1) How many children nodes are there on the root?
   // Replace `CASE_1_YOUR_ANSWER` in `trie_answer.h` with the correct answer.

@@ -3,6 +3,6 @@ rm -r build
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Debug ..
-make -j`nproc`
+make VERBOSE=1 -j`nproc`
 
 
