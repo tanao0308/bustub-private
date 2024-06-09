@@ -74,6 +74,7 @@ class ValueFactory {
     return {TypeId::VARCHAR, value};
   }
 
+  // 简单工厂模式
   static inline auto GetNullValueByType(TypeId type_id) -> Value {
     Value ret_value;
     switch (type_id) {

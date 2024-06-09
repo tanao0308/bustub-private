@@ -49,6 +49,7 @@ class AbstractExpression {
       : children_{std::move(children)}, ret_type_{ret_type} {}
 
   /** Virtual destructor. */
+  // 析构函数是虚函数的原因：确保了当一个对象通过基类指针删除时，完整的析构过程会被执行。这对于实现多态性的类层次结构非常重要。
   virtual ~AbstractExpression() = default;
 
   /** @return The value obtained by evaluating the tuple with the given schema */

@@ -27,6 +27,7 @@ namespace bustub {
 class AbstractExpression;
 
 class Column {
+  // Schema可以访问Column类中的所有成员
   friend class Schema;
 
  public:

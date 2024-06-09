@@ -45,8 +45,20 @@ class StringExpression : public AbstractExpression {
   }
 
   auto Compute(const std::string &val) const -> std::string {
-    // TODO(student): implement upper / lower.
-    return {};
+    std::string ret = val;
+    if (expr_type_ == StringExpressionType::Lower) {
+      /*
+            std::transform 是一个泛型算法，位于 <algorithm> 头文件中。
+            这个函数接受三个迭代器和一个函数对象。
+            它将输入范围内的每个元素通过函数对象进行转换，然后将结果存储在输出范围内。
+      */
+      std::transform(ret.begin(), ret.end(), ret.begin(),
+                     [](unsigned char c) { return std::tolower(static_cast<unsigned char>(c)); });
+    } else if (expr_type_ == StringExpressionType::Upper) {
+      std::transform(ret.begin(), ret.end(), ret.begin(),
+                     [](unsigned char c) { return std::toupper(static_cast<unsigned char>(c)); });
+    }
+    return ret;
   }
 
   auto Evaluate(const Tuple *tuple, const Schema &schema) const -> Value override {

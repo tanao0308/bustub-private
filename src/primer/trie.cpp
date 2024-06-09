@@ -65,10 +65,13 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
   // 第二种情况：值不放在根节点中
   // 根节点如果为空，新建一个空的TrieNode;
   std::shared_ptr<TrieNode> new_root = nullptr;
-  if (root_ == nullptr) new_root = std::make_unique<TrieNode>();
+  if (root_ == nullptr) {
+    new_root = std::make_unique<TrieNode>();
+  }
   // 根节点不为空，调用clone方法复制根节点
-  else
+  else {
     new_root = root_->Clone();
+  }
 
   std::shared_ptr<const TrieNode> node = root_;
   std::shared_ptr<TrieNode> new_node = new_root;
@@ -127,13 +130,13 @@ auto Trie::Remove(std::string_view key) const -> Trie {
   }
 
   // 若待删除点无子节点，则删除并递归删除它的祖先
-  if (new_node->children_.size() == 0) {
+  if (new_node->children_.empty()) {
     while (new_nodes.size() > 1 && new_nodes.back()->children_.empty() &&
-           (new_nodes.back() == new_node || new_nodes.back()->is_value_node_ == false)) {
+           (new_nodes.back() == new_node || !new_nodes.back()->is_value_node_)) {
       new_nodes.pop_back();
       new_nodes.back()->children_.erase(key[key_pos--]);
     }
-    if (new_nodes.size() == 1 && new_nodes.back()->is_value_node_ == false && new_nodes.back()->children_.empty())
+    if (new_nodes.size() == 1 && !new_nodes.back()->is_value_node_ && new_nodes.back()->children_.empty())
       *new_nodes.begin() = nullptr;
   }
   // 若待删除点有子节点，则仅将此节点替换为TrieNode
