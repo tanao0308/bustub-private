@@ -136,8 +136,9 @@ auto Trie::Remove(std::string_view key) const -> Trie {
       new_nodes.pop_back();
       new_nodes.back()->children_.erase(key[key_pos--]);
     }
-    if (new_nodes.size() == 1 && !new_nodes.back()->is_value_node_ && new_nodes.back()->children_.empty())
+    if (new_nodes.size() == 1 && !new_nodes.back()->is_value_node_ && new_nodes.back()->children_.empty()) {
       *new_nodes.begin() = nullptr;
+    }
   }
   // 若待删除点有子节点，则仅将此节点替换为TrieNode
   else {
