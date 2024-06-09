@@ -34,7 +34,9 @@ auto TrieStore::Get(std::string_view key) -> std::optional<ValueGuard<T>> {
   // 注意这里需要显式指定Get函数的模板T
   const T *value = root_.Get<T>(key);
 
-  if (value == nullptr) return std::nullopt;
+  if (value == nullptr) {
+    return std::nullopt;
+  }
   return ValueGuard<T>(root_, *value);
 }
 
@@ -50,7 +52,6 @@ void TrieStore::Put(std::string_view key, T value) {
   // 获取根节点锁
   std::lock_guard<std::mutex> root_lock(root_lock_);
   root_ = trie;
-  return;
 }
 
 void TrieStore::Remove(std::string_view key) {
@@ -64,7 +65,6 @@ void TrieStore::Remove(std::string_view key) {
   // 获取根节点锁
   std::lock_guard<std::mutex> root_lock(root_lock_);
   root_ = trie;
-  return;
 }
 
 // Below are explicit instantiation of template functions.

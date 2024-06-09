@@ -6,14 +6,6 @@
 
 namespace bustub {
 
-void dfs(std::shared_ptr<const TrieNode> root, int dep = 0) {
-  std::cout << "depth=" << dep << ", " << root->is_value_node_ << std::endl;
-  for (auto iter : root->children_) {
-    std::cout << "->" << iter.first << std::endl;
-    dfs(iter.second, dep + 1);
-  }
-}
-
 template <class T>
 auto Trie::Get(std::string_view key) const -> const T * {
   // https://blog.csdn.net/qq_40878302/article/details/136005292
@@ -28,12 +20,16 @@ auto Trie::Get(std::string_view key) const -> const T * {
   std::shared_ptr<const TrieNode> node = root_;
 
   for (char ch : key) {
-    if (node == nullptr || node->children_.find(ch) == node->children_.end()) return nullptr;
+    if (node == nullptr || node->children_.find(ch) == node->children_.end()) {
+      return nullptr;
+    }
     node = node->children_.at(ch);
   }
 
-  TrieNodeWithValue<T> const *value_node = dynamic_cast<const TrieNodeWithValue<T> *>(node.get());
-  if (value_node != nullptr) return value_node->value_.get();
+  auto value_node = dynamic_cast<const TrieNodeWithValue<T> *>(node.get());
+  if (value_node != nullptr) {
+    return value_node->value_.get();
+  }
 
   return nullptr;
   // You should walk through the trie to find the node corresponding to the key. If the node doesn't exist, return
@@ -132,12 +128,12 @@ auto Trie::Remove(std::string_view key) const -> Trie {
 
   // 若待删除点无子节点，则删除并递归删除它的祖先
   if (new_node->children_.size() == 0) {
-    while (new_nodes.size() > 1 && new_nodes.back()->children_.size() == 0 &&
-           (new_nodes.back() == new_node || new_nodes.back()->is_value_node_ == 0)) {
+    while (new_nodes.size() > 1 && new_nodes.back()->children_.empty() &&
+           (new_nodes.back() == new_node || new_nodes.back()->is_value_node_ == false)) {
       new_nodes.pop_back();
       new_nodes.back()->children_.erase(key[key_pos--]);
     }
-    if (new_nodes.size() == 1 && new_nodes.back()->is_value_node_ == 0 && new_nodes.back()->children_.size() == 0)
+    if (new_nodes.size() == 1 && new_nodes.back()->is_value_node_ == false && new_nodes.back()->children_.empty())
       *new_nodes.begin() = nullptr;
   }
   // 若待删除点有子节点，则仅将此节点替换为TrieNode
