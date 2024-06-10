@@ -1,4 +1,4 @@
-cd ..
+cd ../..
 rm GRADESCOPE.md
 cd build
 make submit-p0

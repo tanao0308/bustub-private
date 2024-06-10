@@ -25,42 +25,37 @@ namespace bustub {
 
 enum class AccessType { Unknown = 0, Lookup, Scan, Index };
 
-class LRUKNode { // 帧的类
+class LRUKNode {  // 帧的类
  public:
-  std::list<size_t> history_; // 帧的访问历史记录
-  size_t k_; // 帧大小？
-  frame_id_t fid_; // 帧编号 using frame_id_t = int32_t
-  bool is_evictable_{false}; // 可移除标记
-  
-  LRUKNode(size_t current_timestamp, size_t k, frame_id_t fid, bool is_evictable=true): k_(k), fid_(fid), is_evictable_(is_evictable) {
+  std::list<size_t> history_;  // 帧的访问历史记录
+  size_t k_;                   // 帧大小？
+  frame_id_t fid_;             // 帧编号 using frame_id_t = int32_t
+  bool is_evictable_{false};   // 可移除标记
+
+  LRUKNode(size_t current_timestamp, size_t k, frame_id_t fid, bool is_evictable = true)
+      : k_(k), fid_(fid), is_evictable_(is_evictable) {
     history_.clear();
-	history_.push_back(current_timestamp);
+    history_.push_back(current_timestamp);
   }
   void RecordAccess(size_t current_timestamp) {
-	if(history_.size() == k_) {
-	  history_.pop_front();
-	}
-	history_.push_back(current_timestamp);
+    if (history_.size() == k_) {
+      history_.pop_front();
+    }
+    history_.push_back(current_timestamp);
   }
-  bool operator<(const LRUKNode& other) const {
-	// 传统LRU算法，用最新记录作为比较依据
-	if(history_.size()<k_ && other.history_.size()<k_)
-	{
-		return history_.back() < other.history_.back();
-	}
-	else if(history_.size()<k_ && other.history_.size()==k_)
-	{
-		return true;
-	}
-	else if(history_.size()==k_ && other.history_.size()<k_)
-	{
-		return false;
-	}
-	// KLRU算法，取k位之前的历史记录作为比较依据
-	else
-	{
-		return history_.front() < other.history_.front();
-	}
+  auto operator<(const LRUKNode &other) const -> bool {
+    if (history_.size() < k_ && other.history_.size() == k_) {
+      return true;
+    }
+    if (history_.size() == k_ && other.history_.size() < k_) {
+      return false;
+    }
+    // 传统LRU算法，用最新记录作为比较依据
+    if (history_.size() < k_ && other.history_.size() < k_) {
+      return history_.front() < other.history_.front();
+    }
+    // KLRU算法，取k位之前的历史记录作为比较依据
+    return history_.front() < other.history_.front();
   }
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
@@ -74,7 +69,7 @@ class LRUKNode { // 帧的类
       32：表示这个整数类型是32位宽的。
       _t：表示这是一个类型（type）。这是C标准库中对类型命名的一种惯例，用来增强代码的可读性和一致性
   类似的有：
-	int8_t, uint8_t, int16_t, uint16_t...
+        int8_t, uint8_t, int16_t, uint16_t...
   */
 };
 
@@ -98,23 +93,23 @@ class LRUKReplacer {
    * @brief a new LRUKReplacer.
    * @param num_frames the maximum number of frames the LRUReplacer will be required to store
    */
-   /*
-   在C++中，explicit关键字主要用于构造函数和转换运算符，以防止编译器进行隐式转换，导致意外的行为。
-   class Example {
-   public:
-       Example(int x) {
-           cout << "Constructor called with " << x << endl;
-       }
-   };
-   void func(Example ex) {
-       // Some code
-   }
-   int main() {
-       func(10); // 对Example的构造函数使用explicit可以防止这种语句的产生。
-	   func(Example(10)) // 只有这样的语句才合法，使代码更清晰。
-       return 0;
-   }
-   */
+  /*
+  在C++中，explicit关键字主要用于构造函数和转换运算符，以防止编译器进行隐式转换，导致意外的行为。
+  class Example {
+  public:
+      Example(int x) {
+          cout << "Constructor called with " << x << endl;
+      }
+  };
+  void func(Example ex) {
+      // Some code
+  }
+  int main() {
+      func(10); // 对Example的构造函数使用explicit可以防止这种语句的产生。
+          func(Example(10)) // 只有这样的语句才合法，使代码更清晰。
+      return 0;
+  }
+  */
   explicit LRUKReplacer(size_t num_frames, size_t k);
 
   // 一个将拷贝、移动构造函数和拷贝、移动运算符都设为删除的宏
@@ -213,20 +208,21 @@ class LRUKReplacer {
   /*
   size_t 的具体实现取决于平台和编译器，一般来说，它的大小是与平台上的指针大小相同的。
   在32位系统上，size_t 通常是32位；在64位系统上，size_t 通常是64位。
-  
-  size_t 通常用来表示内存大小和数组索引。它能够表示平台上最大可能的对象大小，因此比普通的 unsigned int 更适合用来处理涉及内存大小和数组索引的场景。
-  
+
+  size_t 通常用来表示内存大小和数组索引。它能够表示平台上最大可能的对象大小，因此比普通的 unsigned int
+  更适合用来处理涉及内存大小和数组索引的场景。
+
   用法：
     数组索引：使用 size_t 来表示数组的索引和大小。
     内存分配：使用 size_t 来指定内存分配函数（如 malloc、calloc）所需要的内存大小。
     字符串长度：使用 size_t 来表示字符串的长度。
   */
-  std::unordered_map<frame_id_t, LRUKNode> node_store_; // 存储帧编号对应的帧类
-  size_t current_timestamp_{0}; // 当前时间戳
-  size_t num_evictable{0}; // 当前不可删除帧的数量
-  size_t replacer_size_; // buffer可能的最大存储量，同时也是帧的最大id，不可有帧id >= replacer_size_
-  size_t k_; // LRU_K算法中的K值
-  std::mutex latch_; // 互斥锁
+  std::unordered_map<frame_id_t, LRUKNode> node_store_;  // 存储帧编号对应的帧类
+  size_t current_timestamp_{0};                          // 当前时间戳
+  size_t num_evictable_{0};                              // 当前不可删除帧的数量
+  size_t replacer_size_;  // buffer可能的最大存储量，同时也是帧的最大id，不可有帧id >= replacer_size_
+  size_t k_;              // LRU_K算法中的K值
+  std::mutex latch_;      // 互斥锁
 };
 
 }  // namespace bustub
