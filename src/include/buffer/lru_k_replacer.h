@@ -27,17 +27,41 @@ enum class AccessType { Unknown = 0, Lookup, Scan, Index };
 
 class LRUKNode { // 帧的类
  public:
+  std::list<size_t> history_; // 帧的访问历史记录
+  size_t k_; // 帧大小？
+  frame_id_t fid_; // 帧编号 using frame_id_t = int32_t
+  bool is_evictable_{false}; // 可移除标记
+  
   LRUKNode(size_t current_timestamp, size_t k, frame_id_t fid, bool is_evictable=true): k_(k), fid_(fid), is_evictable_(is_evictable) {
     history_.clear();
 	history_.push_back(current_timestamp);
   }
-  void add_log(size_t current_timestamp) {
+  void RecordAccess(size_t current_timestamp) {
 	if(history_.size() == k_) {
-	  history.pop_front();
+	  history_.pop_front();
 	}
 	history_.push_back(current_timestamp);
   }
- private:
+  bool operator<(const LRUKNode& other) const {
+	// 传统LRU算法，用最新记录作为比较依据
+	if(history_.size()<k_ && other.history_.size()<k_)
+	{
+		return history_.back() < other.history_.back();
+	}
+	else if(history_.size()<k_ && other.history_.size()==k_)
+	{
+		return true;
+	}
+	else if(history_.size()==k_ && other.history_.size()<k_)
+	{
+		return false;
+	}
+	// KLRU算法，取k位之前的历史记录作为比较依据
+	else
+	{
+		return history_.front() < other.history_.front();
+	}
+  }
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
 
@@ -52,10 +76,6 @@ class LRUKNode { // 帧的类
   类似的有：
 	int8_t, uint8_t, int16_t, uint16_t...
   */
-  std::list<size_t> history_; // 帧的访问历史记录
-  size_t k_; // 帧大小？
-  frame_id_t fid_; // 帧编号 using frame_id_t = int32_t
-  bool is_evictable_{false}; // 可移除标记
 };
 
 /**
@@ -138,7 +158,7 @@ class LRUKReplacer {
    * @param access_type type of access that was received. This parameter is only needed for
    * leaderboard tests.
    */
-  void RecordAccess(frame_id_t frame_id, AccessType access_type = AccessType::Unknown);
+  void RecordAccess(frame_id_t frame_id);
 
   /**
    * TODO(P1): Add implementation
@@ -203,7 +223,7 @@ class LRUKReplacer {
   */
   std::unordered_map<frame_id_t, LRUKNode> node_store_; // 存储帧编号对应的帧类
   size_t current_timestamp_{0}; // 当前时间戳
-  size_t curr_size_{0}; // 当前buffer大小
+  size_t num_evictable{0}; // 当前不可删除帧的数量
   size_t replacer_size_; // buffer可能的最大存储量，同时也是帧的最大id，不可有帧id >= replacer_size_
   size_t k_; // LRU_K算法中的K值
   std::mutex latch_; // 互斥锁
