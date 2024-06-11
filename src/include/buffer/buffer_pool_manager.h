@@ -69,6 +69,7 @@ class BufferPoolManager {
    * @param[out] page_id id of created page
    * @return nullptr if no new pages could be created, otherwise pointer to new page
    */
+  // page_id_t = int32_t，在src/include/common/config.h中定义
   auto NewPage(page_id_t *page_id) -> Page *;
 
   /**
@@ -102,7 +103,7 @@ class BufferPoolManager {
    * @param access_type type of access to the page, only needed for leaderboard tests.
    * @return nullptr if page_id cannot be fetched, otherwise pointer to the requested page
    */
-  auto FetchPage(page_id_t page_id, AccessType access_type = AccessType::Unknown) -> Page *;
+  auto FetchPage(page_id_t page_id) -> Page *;
 
   /**
    * TODO(P2): Add implementation
@@ -135,7 +136,12 @@ class BufferPoolManager {
    * @param access_type type of access to the page, only needed for leaderboard tests.
    * @return false if the page is not in the page table or its pin count is <= 0 before this call, true otherwise
    */
-  auto UnpinPage(page_id_t page_id, bool is_dirty, AccessType access_type = AccessType::Unknown) -> bool;
+   /*
+   Pin（固定）：
+       “Pin” 是指在内存管理中将某个内存页或缓存页锁定在内存中，防止被换出到磁盘或替换为其他数据。
+	   固定某个页意味着它不会被移动或替换，直到被解除固定。
+   */
+  auto UnpinPage(page_id_t page_id, bool is_dirty) -> bool;
 
   /**
    * TODO(P1): Add implementation
@@ -208,5 +214,18 @@ class BufferPoolManager {
   }
 
   // TODO(student): You may add additional private members and helper functions
+  // 尝试获取一个空帧
+  auto myNewFrame(frame_id_t *frame_id_ptr) -> bool;
+  // 脏页写回
+  void myDeleteFrame(frame_id_t frame_id);
+  // 将此页调度到此帧上
+  void myPage2Frame(page_id_t page_id, frame_id_t frame_id);
+  // 更新信息
+  void mySetFrame(page_id_t page_id, frame_id_t frame_id);
+  // 清空此帧
+  void myClearFrame(frame_id_t frame_id, page_id_t page_id);
+
+	void myTest(page_id_t page_id);
+	char my_data[BUSTUB_PAGE_SIZE];
 };
 }  // namespace bustub

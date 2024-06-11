@@ -36,6 +36,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   return node_ptr != nullptr;
 }
 
+// 将frame_id页存进buffer后进行更新
 void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
   std::lock_guard<std::mutex> lock(latch_);
 
