@@ -154,7 +154,6 @@ TEST(BufferPoolManagerTest, SampleTest) {
   delete disk_manager;
 }
 
-
 // ********************************************
 // NOLINTNEXTLINE
 
@@ -413,7 +412,7 @@ TEST(BufferPoolManagerTest, FetchPage) {  // NOLINT
     ASSERT_EQ(pages[i], page);
     ASSERT_EQ(0, std::strcmp(std::to_string(i).c_str(), (page->GetData())));
     ASSERT_EQ(1, bpm->UnpinPage(page_ids[i], true));
-    ASSERT_EQ(1, bpm->UnpinPage(page_ids[i], true)); // error
+    ASSERT_EQ(1, bpm->UnpinPage(page_ids[i], true));  // error
     bpm->FlushPage(page_ids[i]);
   }
 
@@ -574,7 +573,6 @@ TEST(BufferPoolManagerTest, DeletePage) {  // NOLINT
   delete disk_manager;
 }
 
-/*
 TEST(BufferPoolManagerTest, IsDirty) {  // NOLINT
   auto *disk_manager = new DiskManager("test.db");
   auto *bpm = new BufferPoolManager(1, disk_manager, 5);
@@ -583,7 +581,7 @@ TEST(BufferPoolManagerTest, IsDirty) {  // NOLINT
   page_id_t pageid0;
   auto *page0 = bpm->NewPage(&pageid0);
   ASSERT_NE(nullptr, page0);
-  ASSERT_EQ(0, page0->IsDirty());
+  ASSERT_EQ(0, page0->IsDirty());     //
   strcpy(page0->GetData(), "page0");  // NOLINT
   ASSERT_EQ(1, bpm->UnpinPage(pageid0, true));
 
@@ -622,6 +620,7 @@ TEST(BufferPoolManagerTest, IsDirty) {  // NOLINT
   delete disk_manager;
 }
 
+/*
 TEST(BufferPoolManagerTest, ConcurrencyTest) {  // NOLINT
   const int num_threads = 5;
   const int num_runs = 50;

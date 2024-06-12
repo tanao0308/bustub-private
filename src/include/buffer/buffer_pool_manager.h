@@ -221,5 +221,7 @@ class BufferPoolManager {
   void MyPage2Frame(page_id_t page_id, frame_id_t frame_id);
   // 清空此帧
   void MyClearFrame(page_id_t page_id, frame_id_t frame_id);
+  // 重设此帧
+  void MyReset(frame_id_t frame_id);
 };
 }  // namespace bustub
