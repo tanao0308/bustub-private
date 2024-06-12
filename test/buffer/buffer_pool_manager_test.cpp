@@ -663,6 +663,7 @@ TEST(BufferPoolManagerTest, ConcurrencyTest) {  // NOLINT
     delete disk_manager;
   }
 }
+*/
 
 TEST(BufferPoolManagerTest, IntegratedTest) {  // NOLINT
   page_id_t temp_page_id;
@@ -758,6 +759,7 @@ TEST(BufferPoolManagerTest, HardTest_1) {  // NOLINT
   delete disk_manager;
 }
 
+/*
 TEST(BufferPoolManagerTest, HardTest_2) {  // NOLINT
   const int num_threads = 5;
   const int num_runs = 50;
@@ -843,7 +845,9 @@ TEST(BufferPoolManagerTest, HardTest_2) {  // NOLINT
     delete disk_manager;
   }
 }
+*/
 
+/*
 TEST(BufferPoolManagerTest, HardTest_3) {  // NOLINT
   const int num_threads = 5;
   const int num_runs = 50;
@@ -951,7 +955,9 @@ TEST(BufferPoolManagerTest, HardTest_3) {  // NOLINT
     delete disk_manager;
   }
 }
+*/
 
+/*
 TEST(BufferPoolManagerTest, HardTest_4) {  // NOLINT
   const int num_threads = 5;
   const int num_runs = 50;

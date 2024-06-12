@@ -36,6 +36,7 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
 BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
 
 auto BufferPoolManager::NewPage(page_id_t *page_id_ptr) -> Page * {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 取得一个存储新页的空帧id
   frame_id_t frame_id;
   if (!MyNewFrame(&frame_id)) {
@@ -51,17 +52,15 @@ auto BufferPoolManager::NewPage(page_id_t *page_id_ptr) -> Page * {
 }
 
 auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> Page * {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   frame_id_t frame_id;
   // 如果在buffer中存在此页，则直接返回
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    if (page_table_.find(page_id) != page_table_.end()) {
-      frame_id = page_table_.at(page_id);
-      pages_[frame_id].pin_count_++;
-      replacer_->RecordAccess(frame_id);
-      replacer_->SetEvictable(frame_id, false);
-      return &pages_[page_table_.at(page_id)];
-    }
+  if (page_table_.find(page_id) != page_table_.end()) {
+    frame_id = page_table_.at(page_id);
+    pages_[frame_id].pin_count_++;
+    replacer_->RecordAccess(frame_id);
+    replacer_->SetEvictable(frame_id, false);
+    return &pages_[page_table_.at(page_id)];
   }
 
   // 如果不存在，则向磁盘调度此页
@@ -75,19 +74,14 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> 
 }
 
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, AccessType access_type) -> bool {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 检查buffer中是否存在page_id
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    if (page_table_.find(page_id) == page_table_.end()) {
-      return false;
-    }
+  if (page_table_.find(page_id) == page_table_.end()) {
+    return false;
   }
   frame_id_t frame_id;
   // 获取帧编号
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    frame_id = page_table_.at(page_id);
-  }
+  frame_id = page_table_.at(page_id);
   // 判断是否pin_count已经为0
   if (pages_[frame_id].pin_count_ == 0) {
     return false;
@@ -102,19 +96,14 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, AccessType a
 }
 
 auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 检查是否存在此page_id
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    if (page_table_.find(page_id) == page_table_.end()) {
-      return false;
-    }
+  if (page_table_.find(page_id) == page_table_.end()) {
+    return false;
   }
 
   frame_id_t frame_id;
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    frame_id = page_table_.at(page_id);
-  }
+  frame_id = page_table_.at(page_id);
 
   // 开始写回
   auto promise = disk_scheduler_->CreatePromise();
@@ -127,51 +116,43 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
   return true;
 }
 
-void BufferPoolManager::FlushAllPages() {
-  //	for(auto page_frame : page_table_)
-  {}
-  while (true) {
-    std::cout << "here" << std::endl;
+void BufferPoolManager::FlushAllPages() {  // untested
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  for (auto page_frame : page_table_) {
+    FlushPage(page_frame.first);
   }
 }
 
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 若缓冲区不存在该页，则直接返回true
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    if (page_table_.find(page_id) == page_table_.end()) {
-      return true;
-    }
+  if (page_table_.find(page_id) == page_table_.end()) {
+    return true;
   }
 
   frame_id_t frame_id;
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    frame_id = page_table_.at(page_id);
-  }
+  frame_id = page_table_.at(page_id);
   // 若不能删除
   if (pages_[frame_id].pin_count_ != 0) {
     return false;
   }
 
   // 正式删除
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    page_table_.erase(page_id);
-    replacer_->Remove(frame_id);
-    free_list_.push_back(frame_id);
-  }
+  page_table_.erase(page_id);
+  replacer_->Remove(frame_id);
+  free_list_.push_back(frame_id);
   // reset memory and meta
   MyReset(frame_id);
 
   {
-    std::lock_guard<std::mutex> lock(latch_);
+    //    std::lock_guard<std::mutex> lock(latch_);
     DeallocatePage(page_id);
   }
   return true;
 }
 
 auto BufferPoolManager::AllocatePage() -> page_id_t {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   auto promise = disk_scheduler_->CreatePromise();
   auto future = promise.get_future();
   disk_scheduler_->Schedule({/*is_write=*/true, init_data_, /*page_id=*/next_page_id_, std::move(promise)});
@@ -188,16 +169,13 @@ auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard { re
 auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard { return {this, nullptr}; }
 
 auto BufferPoolManager::MyNewFrame(frame_id_t *frame_id_ptr) -> bool {
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-
-    // 选取新帧
-    if (!free_list_.empty()) {
-      *frame_id_ptr = free_list_.front();
-      free_list_.pop_front();
-    } else if (!replacer_->Evict(frame_id_ptr)) {
-      return false;
-    }
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  // 选取新帧
+  if (!free_list_.empty()) {
+    *frame_id_ptr = free_list_.front();
+    free_list_.pop_front();
+  } else if (!replacer_->Evict(frame_id_ptr)) {
+    return false;
   }
 
   // 检查此帧是否为脏帧，如果是则需要写回到硬盘
@@ -206,15 +184,13 @@ auto BufferPoolManager::MyNewFrame(frame_id_t *frame_id_ptr) -> bool {
     if (pages_[*frame_id_ptr].is_dirty_) {
       FlushPage(pages_[*frame_id_ptr].page_id_);
     }
-    {
-      std::lock_guard<std::mutex> lock(latch_);
-      page_table_.erase(pages_[*frame_id_ptr].page_id_);
-    }
+    page_table_.erase(pages_[*frame_id_ptr].page_id_);
     MyReset(*frame_id_ptr);
   }
   return true;
 }
 void BufferPoolManager::MyPage2Frame(page_id_t page_id, frame_id_t frame_id) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 将此页调度到此帧上
   auto promise = disk_scheduler_->CreatePromise();
   auto future = promise.get_future();
@@ -230,16 +206,15 @@ void BufferPoolManager::MyPage2Frame(page_id_t page_id, frame_id_t frame_id) {
   pages_[frame_id].pin_count_ = 1;
   // set dirty = false
   //  pages_[frame_id].is_dirty_ = false;
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    page_table_.insert(std::make_pair(page_id, frame_id));
-  }
+  page_table_.insert(std::make_pair(page_id, frame_id));
 }
 void BufferPoolManager::MyClearFrame(page_id_t page_id, frame_id_t frame_id) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 清空帧内容
   pages_[frame_id].ResetMemory();
 }
 void BufferPoolManager::MyReset(frame_id_t frame_id) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
   pages_[frame_id].ResetMemory();
   pages_[frame_id].page_id_ = INVALID_PAGE_ID;
   pages_[frame_id].pin_count_ = 0;
