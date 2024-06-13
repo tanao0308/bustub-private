@@ -44,10 +44,18 @@ auto BufferPoolManager::NewPage(page_id_t *page_id_ptr) -> Page * {
   }
   // 取得一个新页的id
   *page_id_ptr = AllocatePage();
-  // 将新页写到帧里
-  MyPage2Frame(*page_id_ptr, frame_id);
   // 清空此帧
-  MyClearFrame(*page_id_ptr, frame_id);
+  pages_[frame_id].ResetMemory();
+  // 设置page_id
+  pages_[frame_id].page_id_ = *page_id_ptr;
+  // 更新replacer_
+  replacer_->RecordAccess(frame_id);
+  // 更新page_table_
+  page_table_.insert(std::make_pair(*page_id_ptr, frame_id));
+  // "Pin"帧
+  MyPinPage(*page_id_ptr);
+  // 设置is_dirty_ = true
+  // pages_[frame_id].is_dirty_ = true;
   return &pages_[frame_id];
 }
 
@@ -57,9 +65,8 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> 
   // 如果在buffer中存在此页，则直接返回
   if (page_table_.find(page_id) != page_table_.end()) {
     frame_id = page_table_.at(page_id);
-    pages_[frame_id].pin_count_++;
     replacer_->RecordAccess(frame_id);
-    replacer_->SetEvictable(frame_id, false);
+    MyPinPage(page_id);
     return &pages_[page_table_.at(page_id)];
   }
 
@@ -69,7 +76,18 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> 
     return nullptr;
   }
   // 将此页调度到此帧上
-  MyPage2Frame(page_id, frame_id);
+  auto promise = disk_scheduler_->CreatePromise();
+  auto future = promise.get_future();
+  disk_scheduler_->Schedule({/*is_write=*/false, pages_[frame_id].data_, /*page_id=*/page_id, std::move(promise)});
+  future.get();
+  // 更新page_id
+  pages_[frame_id].page_id_ = page_id;
+  // 更新replacer_
+  replacer_->RecordAccess(frame_id);
+  // 更新page_table_
+  page_table_.insert(std::make_pair(page_id, frame_id));
+  // "Pin"帧
+  MyPinPage(page_id);
   return &pages_[frame_id];
 }
 
@@ -79,9 +97,7 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, AccessType a
   if (page_table_.find(page_id) == page_table_.end()) {
     return false;
   }
-  frame_id_t frame_id;
-  // 获取帧编号
-  frame_id = page_table_.at(page_id);
+  frame_id_t frame_id = page_table_.at(page_id);
   // 判断是否pin_count已经为0
   if (pages_[frame_id].pin_count_ == 0) {
     return false;
@@ -102,8 +118,7 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
     return false;
   }
 
-  frame_id_t frame_id;
-  frame_id = page_table_.at(page_id);
+  frame_id_t frame_id = page_table_.at(page_id);
 
   // 开始写回
   auto promise = disk_scheduler_->CreatePromise();
@@ -130,8 +145,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
     return true;
   }
 
-  frame_id_t frame_id;
-  frame_id = page_table_.at(page_id);
+  frame_id_t frame_id = page_table_.at(page_id);
   // 若不能删除
   if (pages_[frame_id].pin_count_ != 0) {
     return false;
@@ -151,14 +165,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   return true;
 }
 
-auto BufferPoolManager::AllocatePage() -> page_id_t {
-  std::lock_guard<std::recursive_mutex> lock(mutex_);
-  auto promise = disk_scheduler_->CreatePromise();
-  auto future = promise.get_future();
-  disk_scheduler_->Schedule({/*is_write=*/true, init_data_, /*page_id=*/next_page_id_, std::move(promise)});
-  future.get();
-  return next_page_id_++;
-}
+auto BufferPoolManager::AllocatePage() -> page_id_t { return next_page_id_++; }
 
 auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard { return {this, nullptr}; }
 
@@ -168,6 +175,8 @@ auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard { re
 
 auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard { return {this, nullptr}; }
 
+// my functions
+// 取一个帧并设为空
 auto BufferPoolManager::MyNewFrame(frame_id_t *frame_id_ptr) -> bool {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 选取新帧
@@ -189,33 +198,15 @@ auto BufferPoolManager::MyNewFrame(frame_id_t *frame_id_ptr) -> bool {
   }
   return true;
 }
-void BufferPoolManager::MyPage2Frame(page_id_t page_id, frame_id_t frame_id) {
-  std::lock_guard<std::recursive_mutex> lock(mutex_);
-  // 将此页调度到此帧上
-  auto promise = disk_scheduler_->CreatePromise();
-  auto future = promise.get_future();
-  disk_scheduler_->Schedule({/*is_write=*/false, pages_[frame_id].data_, /*page_id=*/page_id, std::move(promise)});
-  future.get();
 
-  // 更新page_id
-  pages_[frame_id].page_id_ = page_id;
-  // record the access history of the frame in the replacer
-  replacer_->RecordAccess(frame_id);
-  // pin the frame
+void BufferPoolManager::MyPinPage(page_id_t page_id) {
+  frame_id_t frame_id = page_table_.at(page_id);
   replacer_->SetEvictable(frame_id, false);
-  pages_[frame_id].pin_count_ = 1;
-  // set dirty = false
-  //  pages_[frame_id].is_dirty_ = false;
-  page_table_.insert(std::make_pair(page_id, frame_id));
+  pages_[frame_id].pin_count_++;
 }
-void BufferPoolManager::MyClearFrame(page_id_t page_id, frame_id_t frame_id) {
-  std::lock_guard<std::recursive_mutex> lock(mutex_);
-  // 清空帧内容
-  pages_[frame_id].ResetMemory();
-}
+
 void BufferPoolManager::MyReset(frame_id_t frame_id) {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
-  pages_[frame_id].ResetMemory();
   pages_[frame_id].page_id_ = INVALID_PAGE_ID;
   pages_[frame_id].pin_count_ = 0;
   pages_[frame_id].is_dirty_ = false;

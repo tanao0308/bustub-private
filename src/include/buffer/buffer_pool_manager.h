@@ -199,7 +199,6 @@ class BufferPoolManager {
   /** This latch protects shared data structures. We recommend updating this comment to describe what it protects. */
   std::mutex latch_;
   std::recursive_mutex mutex_;
-  char init_data_[BUSTUB_PAGE_SIZE] = {0};
 
   /**
    * @brief Allocate a page on disk. Caller should acquire the latch before calling this function.
@@ -218,10 +217,8 @@ class BufferPoolManager {
   // TODO(student): You may add additional private members and helper functions
   // 尝试获取一个空帧
   auto MyNewFrame(frame_id_t *frame_id_ptr) -> bool;
-  // 将此页调度到此帧上
-  void MyPage2Frame(page_id_t page_id, frame_id_t frame_id);
-  // 清空此帧
-  void MyClearFrame(page_id_t page_id, frame_id_t frame_id);
+  // 锁定此帧
+  void MyPinPage(page_id_t page_id);
   // 重设此帧
   void MyReset(frame_id_t frame_id);
 };

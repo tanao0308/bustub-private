@@ -92,6 +92,7 @@ class BasicPageGuard {
     return reinterpret_cast<const T *>(GetData());
   }
 
+  // Get Data Mutable，表示“获取可变数据”
   auto GetDataMut() -> char * {
     is_dirty_ = true;
     return page_->GetData();
@@ -106,17 +107,19 @@ class BasicPageGuard {
   friend class ReadPageGuard;
   friend class WritePageGuard;
 
-  [[maybe_unused]] BufferPoolManager *bpm_{nullptr};
+  BufferPoolManager *bpm_{nullptr};
   Page *page_{nullptr};
   bool is_dirty_{false};
+
+  void Reset();
 };
 
 class ReadPageGuard {
  public:
   ReadPageGuard() = default;
   ReadPageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {}
-  ReadPageGuard(const ReadPageGuard &) = delete;
-  auto operator=(const ReadPageGuard &) -> ReadPageGuard & = delete;
+  ReadPageGuard(const ReadPageGuard &) = delete;                      // 删除拷贝构造函数
+  auto operator=(const ReadPageGuard &) -> ReadPageGuard & = delete;  // 删除拷贝运算符
 
   /** TODO(P2): Add implementation
    *
