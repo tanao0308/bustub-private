@@ -16,6 +16,8 @@
 #include "common/macros.h"
 #include "storage/page/page_guard.h"
 
+#include "common/logger.h"
+
 namespace bustub {
 
 BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager, size_t replacer_k,
@@ -36,6 +38,7 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
 BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
 
 auto BufferPoolManager::NewPage(page_id_t *page_id_ptr) -> Page * {
+  LOG_DEBUG("here");
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 取得一个存储新页的空帧id
   frame_id_t frame_id;
@@ -54,12 +57,11 @@ auto BufferPoolManager::NewPage(page_id_t *page_id_ptr) -> Page * {
   page_table_.insert(std::make_pair(*page_id_ptr, frame_id));
   // "Pin"帧
   MyPinPage(*page_id_ptr);
-  // 设置is_dirty_ = true
-  // pages_[frame_id].is_dirty_ = true;
   return &pages_[frame_id];
 }
 
 auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> Page * {
+  LOG_DEBUG("here");
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   frame_id_t frame_id;
   // 如果在buffer中存在此页，则直接返回
@@ -92,6 +94,7 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> 
 }
 
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, AccessType access_type) -> bool {
+  LOG_DEBUG("here");
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 检查buffer中是否存在page_id
   if (page_table_.find(page_id) == page_table_.end()) {
@@ -112,6 +115,7 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, AccessType a
 }
 
 auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
+  LOG_DEBUG("here");
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 检查是否存在此page_id
   if (page_table_.find(page_id) == page_table_.end()) {
@@ -132,6 +136,7 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
 }
 
 void BufferPoolManager::FlushAllPages() {  // untested
+  LOG_DEBUG("here");
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   for (auto page_frame : page_table_) {
     FlushPage(page_frame.first);
@@ -139,6 +144,7 @@ void BufferPoolManager::FlushAllPages() {  // untested
 }
 
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
+  LOG_DEBUG("here");
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   // 若缓冲区不存在该页，则直接返回true
   if (page_table_.find(page_id) == page_table_.end()) {
@@ -167,13 +173,37 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
 
 auto BufferPoolManager::AllocatePage() -> page_id_t { return next_page_id_++; }
 
-auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard { return {this, nullptr}; }
+auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard {
+  LOG_DEBUG("here");
+  Page *page = FetchPage(page_id);
+  BasicPageGuard bpg = BasicPageGuard(this, page);
+  return bpg;
+}
 
-auto BufferPoolManager::FetchPageRead(page_id_t page_id) -> ReadPageGuard { return {this, nullptr}; }
+// 需要在获取page后对其进行加锁再返回ReadPageGuard（ReadPageGuard的构造函数却不需要加锁）
+auto BufferPoolManager::FetchPageRead(page_id_t page_id) -> ReadPageGuard {
+  LOG_DEBUG("here");
+  Page *page = FetchPage(page_id);
+  ReadPageGuard rpg = ReadPageGuard(this, page);
+  page->RLatch();
+  return rpg;
+}
 
-auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard { return {this, nullptr}; }
+//同上，需要加锁
+auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard {
+  LOG_DEBUG("here");
+  Page *page = FetchPage(page_id);
+  WritePageGuard wpg = WritePageGuard(this, page);
+  page->WLatch();
+  return wpg;
+}
 
-auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard { return {this, nullptr}; }
+auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard {
+  LOG_DEBUG("here");
+  Page *page = NewPage(page_id);
+  BasicPageGuard bpg = BasicPageGuard(this, page);
+  return bpg;
+}
 
 // my functions
 // 取一个帧并设为空
