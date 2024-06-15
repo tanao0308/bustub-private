@@ -48,6 +48,7 @@ class ExtendibleHTableHeaderPage {
    * @param hash the hash of the key
    * @return directory index the key is hashed to
    */
+  // 返回directory节点的id
   auto HashToDirectoryIndex(uint32_t hash) const -> uint32_t;
 
   /**
