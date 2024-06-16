@@ -56,6 +56,7 @@ void ExtendibleHTableBucketPage<K, V, KC>::PrintBucket() const {
  * (3) The LD is the same at each index with the same bucket_page_id
  */
 void ExtendibleHTableDirectoryPage::VerifyIntegrity() const {
+  PrintDirectory();
   // build maps of {bucket_page_id : pointer_count} and {bucket_page_id : local_depth}
   std::unordered_map<page_id_t, uint32_t> page_id_to_count = std::unordered_map<page_id_t, uint32_t>();
   std::unordered_map<page_id_t, uint32_t> page_id_to_ld = std::unordered_map<page_id_t, uint32_t>();

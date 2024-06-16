@@ -43,6 +43,14 @@ constexpr auto HTableBucketArraySize(uint64_t mapping_type_size) -> uint64_t {
 
 /**
  * Bucket page for extendible hash table.
+
+ 在数据库系统中，插入操作通常不直接将具体的数据存储在桶（bucket）中，
+ 而是将数据的位置信息（如记录标识符 RID）存储在桶中。
+ 在bucket中插入的只是具体数据的位置信息而不是具体的数据。
+
+ key: GenericKey<8>，主键的哈希值
+ RID: 页号+页内偏移量
+ max_size_ 指的是该桶（bucket）中最多能存储的键值对（key-value pair）的数量，具体来说就是（index_key，RID）。
  */
 template <typename KeyType, typename ValueType, typename KeyComparator>
 class ExtendibleHTableBucketPage {
@@ -65,6 +73,9 @@ class ExtendibleHTableBucketPage {
    * @param[out] value value to set
    * @param cmp the comparator
    * @return true if the key and value are present, false if not found.
+
+         如果找到指定的键，并成功设置了输出参数 value，则返回 true。
+     如果未找到指定的键，则返回 false。
    */
   auto Lookup(const KeyType &key, ValueType &value, const KeyComparator &cmp) const -> bool;
 

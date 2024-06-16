@@ -26,9 +26,16 @@ namespace bustub {
  * purposes, the actual size of which is specified and instantiated
  * with a template argument.
  */
+// 一个字节数为KeySize的通用key类
 template <size_t KeySize>
 class GenericKey {
  public:
+  /*
+  void* memset( void* ptr, int value, size_t num );
+        ptr: 指向要填充的内存块的指针。
+        value: 要填充的值，以 int 形式传入，但会转换为 unsigned char。
+        num: 要填充的字节数。
+  */
   inline void SetFromKey(const Tuple &tuple) {
     // initialize to 0
     memset(data_, 0, KeySize);
@@ -41,6 +48,7 @@ class GenericKey {
     memcpy(data_, &key, sizeof(int64_t));
   }
 
+  //
   inline auto ToValue(Schema *schema, uint32_t column_idx) const -> Value {
     const char *data_ptr;
     const auto &col = schema->GetColumn(column_idx);

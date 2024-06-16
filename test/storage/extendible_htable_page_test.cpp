@@ -39,15 +39,17 @@ TEST(ExtendibleHTableTest, BucketPageSampleTest) {
     auto bucket_page = guard.AsMut<ExtendibleHTableBucketPage<GenericKey<8>, RID, GenericComparator<8>>>();
     bucket_page->Init(10);
 
+    // key_schema 用于定义插入到哈希表中的键的结构和类型
     auto key_schema = ParseCreateStatement("a bigint");
     GenericComparator<8> comparator(key_schema.get());
     GenericKey<8> index_key;
+    // RID 通常用于唯一标识表中的一条记录或数据页中的一个数据项
     RID rid;
 
     // insert a few (key, value) pairs
     for (int64_t i = 0; i < 10; i++) {
-      index_key.SetFromInteger(i);
-      rid.Set(i, i);
+      index_key.SetFromInteger(i);  // 将整数键 i 转换为哈希值
+      rid.Set(i, i);                // 设置页面ID和槽号
       ASSERT_TRUE(bucket_page->Insert(index_key, rid, comparator));
     }
 
@@ -110,6 +112,7 @@ TEST(ExtendibleHTableTest, HeaderDirectoryPageSampleTest) {
     11000000000000001000000000000000 - 3221258240
     */
 
+	// header_page是用hash值的前几位进行划分，directory_page是用后几位划分
     // ensure we are hashing into proper bucket based on upper 2 bits
     uint32_t hashes[4]{32768, 1073774592, 2147516416, 3221258240};
     for (uint32_t i = 0; i < 4; i++) {
@@ -197,6 +200,8 @@ TEST(ExtendibleHTableTest, HeaderDirectoryPageSampleTest) {
     ASSERT_EQ(directory_page->GetBucketPageId(2), bucket_page_id_3);
     ASSERT_EQ(directory_page->GetBucketPageId(3), bucket_page_id_2);
 
+    std::cout << "here" << std::endl;
+
     for (uint32_t i = 0; i < 100; i++) {
       ASSERT_EQ(directory_page->HashToBucketIndex(i), i % 4);
     }
@@ -257,7 +262,6 @@ TEST(ExtendibleHTableTest, HeaderDirectoryPageSampleTest) {
     |    7    |    3    |    1    |
     ================ END DIRECTORY ================
     */
-
     ASSERT_EQ(directory_page->CanShrink(), true);
     directory_page->DecrGlobalDepth();
 
