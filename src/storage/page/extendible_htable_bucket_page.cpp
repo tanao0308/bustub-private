@@ -20,22 +20,42 @@ namespace bustub {
 
 template <typename K, typename V, typename KC>
 void ExtendibleHTableBucketPage<K, V, KC>::Init(uint32_t max_size) {
-  throw NotImplementedException("ExtendibleHTableBucketPage not implemented");
+	max_size_ = max_size;
+	size_ = 0;
 }
 
 template <typename K, typename V, typename KC>
 auto ExtendibleHTableBucketPage<K, V, KC>::Lookup(const K &key, V &value, const KC &cmp) const -> bool {
-  return false;
+	for(int i=0; i<size_; ++i) {
+		if(cmp(key, array_[i].first) == 0 && value == array_[i].second) {
+			return false;
+		}
+	}
+  return true;
 }
 
 template <typename K, typename V, typename KC>
 auto ExtendibleHTableBucketPage<K, V, KC>::Insert(const K &key, const V &value, const KC &cmp) -> bool {
-  return false;
+	if(size_ == max_size_) {
+		return false;
+	}
+	for(int i=0; i<size_; ++i) {
+		if(cmp(key, array_[i].first) == 0) {
+			return false;
+		}
+	}
+	array_[size_++] = MappingType(key, value);
+	return true;
 }
 
 template <typename K, typename V, typename KC>
 auto ExtendibleHTableBucketPage<K, V, KC>::Remove(const K &key, const KC &cmp) -> bool {
-  return false;
+	for(int i=0; i<size_; ++i) {
+		if(cmp(key, array_[i].first) == 0) {
+			// 将最后一个移到当前位置并删除最后一个
+			array_[i]
+		}
+	}
 }
 
 template <typename K, typename V, typename KC>

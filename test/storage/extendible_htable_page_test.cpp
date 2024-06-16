@@ -120,6 +120,7 @@ TEST(ExtendibleHTableTest, HeaderDirectoryPageSampleTest) {
 
     /************************ DIRECTORY PAGE TEST ************************/
     BasicPageGuard directory_guard = bpm->NewPageGuarded(&directory_page_id);
+    // 这里AsMut是指将这个 guard 管理的 page 数据(4096个字节)强制转化成 Directory 类型
     auto directory_page = directory_guard.AsMut<ExtendibleHTableDirectoryPage>();
     directory_page->Init(3);
 

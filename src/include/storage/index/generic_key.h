@@ -76,6 +76,7 @@ class GenericKey {
 template <size_t KeySize>
 class GenericComparator {
  public:
+  // 重载类的()符号，使之成为比较运算
   inline auto operator()(const GenericKey<KeySize> &lhs, const GenericKey<KeySize> &rhs) const -> int {
     uint32_t column_count = key_schema_->GetColumnCount();
 
