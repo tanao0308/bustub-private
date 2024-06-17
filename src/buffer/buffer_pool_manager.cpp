@@ -181,6 +181,7 @@ auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard {
 }
 
 // 需要在获取page后对其进行加锁再返回ReadPageGuard（ReadPageGuard的构造函数却不需要加锁）
+// 相当于将 FetchPageBasic 和 guard.UpgradeRead 合成一步
 auto BufferPoolManager::FetchPageRead(page_id_t page_id) -> ReadPageGuard {
   // LOG_DEBUG("here");
   Page *page = FetchPage(page_id);
