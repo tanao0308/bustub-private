@@ -112,7 +112,7 @@ TEST(ExtendibleHTableTest, HeaderDirectoryPageSampleTest) {
     11000000000000001000000000000000 - 3221258240
     */
 
-	// header_page是用hash值的前几位进行划分，directory_page是用后几位划分
+    // header_page是用hash值的前几位进行划分，directory_page是用后几位划分
     // ensure we are hashing into proper bucket based on upper 2 bits
     uint32_t hashes[4]{32768, 1073774592, 2147516416, 3221258240};
     for (uint32_t i = 0; i < 4; i++) {
