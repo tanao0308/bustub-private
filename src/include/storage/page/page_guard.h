@@ -119,8 +119,8 @@ class ReadPageGuard {
  public:
   ReadPageGuard() = default;
   ReadPageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {
-    LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
-              (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
+    //    LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
+    //              (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
   }
   ReadPageGuard(const ReadPageGuard &) = delete;                      // 删除拷贝构造函数
   auto operator=(const ReadPageGuard &) -> ReadPageGuard & = delete;  // 删除拷贝运算符
@@ -182,8 +182,8 @@ class WritePageGuard {
  public:
   WritePageGuard() = default;
   WritePageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {
-    LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
-              (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
+    //    LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
+    //              (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
   }
 
   WritePageGuard(const WritePageGuard &) = delete;

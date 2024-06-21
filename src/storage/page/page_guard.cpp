@@ -7,14 +7,10 @@ namespace bustub {
 
 BasicPageGuard::BasicPageGuard(BasicPageGuard &&that) noexcept
     : bpm_(that.bpm_), page_(that.page_), is_dirty_(that.is_dirty_) {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (page_ == nullptr ? -1 : PageId()),
-  //            (page_ == nullptr ? -1 : page_->GetPinCount()));
   that.Reset();
 }
 
 void BasicPageGuard::Drop() {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (page_ == nullptr ? -1 : PageId()),
-  //            (page_ == nullptr ? -1 : page_->GetPinCount()));
   if (page_ != nullptr) {
     bpm_->UnpinPage(PageId(), is_dirty_);
   }
@@ -22,8 +18,6 @@ void BasicPageGuard::Drop() {
 }
 
 auto BasicPageGuard::operator=(BasicPageGuard &&that) noexcept -> BasicPageGuard & {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (page_ == nullptr ? -1 : PageId()),
-  //            (page_ == nullptr ? -1 : page_->GetPinCount()));
   if (this != &that) {
     // 这里需要先Drop()，因为此时本管理器相当于删除了
     Drop();
@@ -38,15 +32,11 @@ auto BasicPageGuard::operator=(BasicPageGuard &&that) noexcept -> BasicPageGuard
 }
 
 BasicPageGuard::~BasicPageGuard() {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (page_ == nullptr ? -1 : PageId()),
-  //            (page_ == nullptr ? -1 : page_->GetPinCount()));
   Drop();
 };  // NOLINT
 
 // 这个函数需要在转换之后对产生的ReadPageGuard进行加锁
 auto BasicPageGuard::UpgradeRead() -> ReadPageGuard {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (page_ == nullptr ? -1 : PageId()),
-  //            (page_ == nullptr ? -1 : page_->GetPinCount()));
   ReadPageGuard rpg = ReadPageGuard(bpm_, page_);
   page_->RLatch();
   Reset();
@@ -55,8 +45,6 @@ auto BasicPageGuard::UpgradeRead() -> ReadPageGuard {
 
 // 同上
 auto BasicPageGuard::UpgradeWrite() -> WritePageGuard {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (page_ == nullptr ? -1 : PageId()),
-  //            (page_ == nullptr ? -1 : page_->GetPinCount()));
   WritePageGuard wpg = WritePageGuard(bpm_, page_);
   page_->WLatch();
   Reset();
@@ -64,8 +52,6 @@ auto BasicPageGuard::UpgradeWrite() -> WritePageGuard {
 }
 
 void BasicPageGuard::Reset() {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (page_ == nullptr ? -1 : PageId()),
-  //            (page_ == nullptr ? -1 : page_->GetPinCount()));
   bpm_ = nullptr;
   page_ = nullptr;
   is_dirty_ = false;
@@ -77,8 +63,6 @@ ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept = default;
 
 // 移动赋值运算符，需要对原来的page解锁，再Drop
 auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard & {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
-  //            (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
   if (this != &that) {
     if (guard_.page_ != nullptr) {
       guard_.page_->RUnlatch();
@@ -91,8 +75,6 @@ auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard & 
 
 // 同样是先解锁再Drop
 void ReadPageGuard::Drop() {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
-  //            (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
   if (guard_.page_ != nullptr) {
     guard_.page_->RUnlatch();
     guard_.Drop();
@@ -100,8 +82,6 @@ void ReadPageGuard::Drop() {
 }
 
 ReadPageGuard::~ReadPageGuard() {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
-  //            (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
   Drop();
 }  // NOLINT
 
@@ -110,8 +90,6 @@ ReadPageGuard::~ReadPageGuard() {
 WritePageGuard::WritePageGuard(WritePageGuard &&that) noexcept = default;
 
 auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard & {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
-  //            (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
   if (this != &that) {
     if (guard_.page_ != nullptr) {
       guard_.page_->WUnlatch();
@@ -123,16 +101,12 @@ auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard
 }
 
 void WritePageGuard::Drop() {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
-  //            (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
   if (guard_.page_ != nullptr) {
     guard_.page_->WUnlatch();
     guard_.Drop();
   }
 }
 WritePageGuard::~WritePageGuard() {
-  // LOG_DEBUG("PageId: %d, PinCount: %d", (guard_.page_ == nullptr ? -1 : PageId()),
-  //            (guard_.page_ == nullptr ? -1 : guard_.page_->GetPinCount()));
   if (guard_.page_ != nullptr) {
     guard_.page_->WUnlatch();
   }

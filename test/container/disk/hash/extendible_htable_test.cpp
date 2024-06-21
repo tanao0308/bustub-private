@@ -48,7 +48,7 @@ TEST(ExtendibleHTableTest, InsertTest1) {
 }
 
 // NOLINTNEXTLINE
-TEST(ExtendibleHTableTest, DISABLED_InsertTest2) {
+TEST(ExtendibleHTableTest, InsertTest2) {
   auto disk_mgr = std::make_unique<DiskManagerUnlimitedMemory>();
   auto bpm = std::make_unique<BufferPoolManager>(50, disk_mgr.get());
 
@@ -66,6 +66,8 @@ TEST(ExtendibleHTableTest, DISABLED_InsertTest2) {
     ASSERT_EQ(i, res[0]);
   }
 
+  ht.PrintHT();
+
   ht.VerifyIntegrity();
 
   // check that they were actually inserted
@@ -77,6 +79,8 @@ TEST(ExtendibleHTableTest, DISABLED_InsertTest2) {
     ASSERT_EQ(i, res[0]);
   }
 
+  ht.PrintHT();
+
   ht.VerifyIntegrity();
 
   // try to get some keys that don't exist/were not inserted
@@ -87,11 +91,13 @@ TEST(ExtendibleHTableTest, DISABLED_InsertTest2) {
     ASSERT_EQ(0, res.size());
   }
 
+  ht.PrintHT();
+
   ht.VerifyIntegrity();
 }
 
 // NOLINTNEXTLINE
-TEST(ExtendibleHTableTest, DISABLED_RemoveTest1) {
+TEST(ExtendibleHTableTest, RemoveTest1) {
   auto disk_mgr = std::make_unique<DiskManagerUnlimitedMemory>();
   auto bpm = std::make_unique<BufferPoolManager>(50, disk_mgr.get());
 
@@ -156,4 +162,31 @@ TEST(ExtendibleHTableTest, DISABLED_RemoveTest1) {
   ht.VerifyIntegrity();
 }
 
+TEST(ExtendibleHTableTest, RemoveTest2) {
+  auto disk_mgr = std::make_unique<DiskManagerUnlimitedMemory>();
+  auto bpm = std::make_unique<BufferPoolManager>(3, disk_mgr.get());
+
+  DiskExtendibleHashTable<int, int, IntComparator> ht("blah", bpm.get(), IntComparator(), HashFunction<int>(), 2, 3, 2);
+
+  // insert some values
+  ht.Insert(4, 0);
+  ht.PrintHT();
+  ht.Insert(5, 0);
+  ht.PrintHT();
+  ht.Insert(6, 0);
+  ht.PrintHT();
+  ht.Insert(14, 0);
+
+  ht.PrintHT();
+  ht.Remove(5);
+
+  ht.PrintHT();
+  ht.Remove(14);
+
+  ht.PrintHT();
+  ht.Remove(4);
+
+  ht.PrintHT();
+  ht.Remove(6);
+}
 }  // namespace bustub

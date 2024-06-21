@@ -23,6 +23,7 @@ namespace bustub {
 BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager, size_t replacer_k,
                                      LogManager *log_manager)
     : pool_size_(pool_size), disk_scheduler_(std::make_unique<DiskScheduler>(disk_manager)), log_manager_(log_manager) {
+  LOG_DEBUG("pool_size=%lu, replacer_k=%lu", pool_size, replacer_k);
   // disk_scheduler_在构造函数内就开启了线程，所以无需手动开启
   // we allocate a consecutive memory space for the buffer pool
   pages_ = new Page[pool_size_];

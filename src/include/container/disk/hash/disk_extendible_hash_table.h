@@ -13,6 +13,7 @@
 #pragma once
 
 #include <deque>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <utility>
@@ -110,22 +111,12 @@ class DiskExtendibleHashTable {
    */
   auto Hash(K key) const -> uint32_t;
 
-  auto NewDirectory(ExtendibleHTableHeaderPage *header, uint32_t directory_idx, uint32_t hash) -> bool;
+  void NewDirectory(ExtendibleHTableHeaderPage *header, uint32_t directory_idx, uint32_t hash);
 
-  auto NewBucket(ExtendibleHTableDirectoryPage *directory, uint32_t bucket_idx) -> bool;
+  auto SpliteBucket(ExtendibleHTableDirectoryPage *directory, ExtendibleHTableBucketPage<K, V, KC> *bucket,
+                    uint32_t bucket_idx) -> bool;
 
-  auto InsertToNewDirectory(ExtendibleHTableHeaderPage *header, uint32_t directory_idx, uint32_t hash, const K &key,
-                            const V &value) -> bool;
-
-  auto InsertToNewBucket(ExtendibleHTableDirectoryPage *directory, uint32_t bucket_idx, const K &key, const V &value)
-      -> bool;
-
-  void UpdateDirectoryMapping(ExtendibleHTableDirectoryPage *directory, uint32_t new_bucket_idx,
-                              page_id_t new_bucket_page_id, uint32_t new_local_depth, uint32_t local_depth_mask);
-
-  void MigrateEntries(ExtendibleHTableBucketPage<K, V, KC> *old_bucket,
-                      ExtendibleHTableBucketPage<K, V, KC> *new_bucket, uint32_t new_bucket_idx,
-                      uint32_t local_depth_mask);
+  void MergeBucket(ExtendibleHTableDirectoryPage *directory, uint32_t bucket_idx);
 
   // member variables
   std::string index_name_;
@@ -136,6 +127,7 @@ class DiskExtendibleHashTable {
   uint32_t directory_max_depth_;
   uint32_t bucket_max_size_;
   page_id_t header_page_id_;
+  std::mutex latch_;
 };
 
 }  // namespace bustub
