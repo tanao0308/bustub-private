@@ -166,7 +166,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   MyReset(frame_id);
 
   {
-    //    std::lock_guard<std::mutex> lock(latch_);
+    std::lock_guard<std::mutex> lock(latch_);
     DeallocatePage(page_id);
   }
   return true;
