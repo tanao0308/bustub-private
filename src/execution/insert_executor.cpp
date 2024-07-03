@@ -39,16 +39,18 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   auto indices = exec_ctx_->GetCatalog()->GetTableIndexes(table_info->name_);
 
   while (child_executor_->Next(tuple, rid)) {
-    // 增加答案
-    ++count;
     // 插入记录
     std::optional<RID> new_rid_optional = table_info->table_->InsertTuple(TupleMeta{0, false}, *tuple);
     RID new_rid = new_rid_optional.value();
+    // 更新索引
     for (auto &index_info : indices) {
       auto key = tuple->KeyFromTuple(schema, index_info->key_schema_, index_info->index_->GetKeyAttrs());
       index_info->index_->InsertEntry(key, new_rid, exec_ctx_->GetTransaction());
     }
+    // 增加答案
+    ++count;
   }
+
   // 这里的 tuple 不再对应实际的数据行，而是用来存储插入操作的影响行数
   std::vector<Value> result = {{TypeId::INTEGER, count}};
   *tuple = Tuple(result, &GetOutputSchema());
