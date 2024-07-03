@@ -31,9 +31,7 @@ auto BasicPageGuard::operator=(BasicPageGuard &&that) noexcept -> BasicPageGuard
   return *this;
 }
 
-BasicPageGuard::~BasicPageGuard() {
-  Drop();
-};  // NOLINT
+BasicPageGuard::~BasicPageGuard() { Drop(); };  // NOLINT
 
 // 这个函数需要在转换之后对产生的ReadPageGuard进行加锁
 auto BasicPageGuard::UpgradeRead() -> ReadPageGuard {
@@ -81,9 +79,7 @@ void ReadPageGuard::Drop() {
   }
 }
 
-ReadPageGuard::~ReadPageGuard() {
-  Drop();
-}  // NOLINT
+ReadPageGuard::~ReadPageGuard() { Drop(); }  // NOLINT
 
 // ----------WritePageGuard-----------
 // 参考Read的实现

@@ -62,6 +62,7 @@ class InsertExecutor : public AbstractExecutor {
   const InsertPlanNode *plan_;
 
   std::unique_ptr<AbstractExecutor> child_executor_;
+  bool has_inserted_;
 };
 
 }  // namespace bustub

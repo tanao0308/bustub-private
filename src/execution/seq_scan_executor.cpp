@@ -14,33 +14,35 @@
 
 namespace bustub {
 
-SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan) : AbstractExecutor(exec_ctx), plan_(plan), 
-    table_heap_(nullptr), iter_(nullptr) {}
+SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan)
+    : AbstractExecutor(exec_ctx), plan_(plan), table_heap_(nullptr), iter_(nullptr) {}
 
 void SeqScanExecutor::Init() {
-    table_heap_ = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())->table_.get();
-    iter_ = std::make_unique<TableIterator>(table_heap_->MakeIterator());
+  table_heap_ = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())->table_.get();
+  iter_ = std::make_unique<TableIterator>(table_heap_->MakeIterator());
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-    TupleMeta meta;
-    do {
-        if(iter_->IsEnd()) {
-            return false;
-        }
-        meta = iter_->GetTuple().first;
-        if(!meta.is_deleted_) {
-            *tuple = iter_->GetTuple().second;
-            *rid = iter_->GetRID();
-        }
-        ++(*iter_);
-    } while(meta.is_deleted_ || PassFilter(tuple));
-    return true;
+  TupleMeta meta;
+  do {
+    if (iter_->IsEnd()) {
+      return false;
+    }
+    meta = iter_->GetTuple().first;
+    if (!meta.is_deleted_) {
+      *tuple = iter_->GetTuple().second;
+      *rid = iter_->GetRID();
+    }
+    ++(*iter_);
+  } while (meta.is_deleted_ || PassFilter(tuple));
+  return true;
 }
 
 auto SeqScanExecutor::PassFilter(Tuple *tuple) -> bool {
-    return plan_->filter_predicate_ != nullptr && \
-        !plan_->filter_predicate_->Evaluate(tuple, GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())->schema_).GetAs<bool>();
+  return plan_->filter_predicate_ != nullptr &&
+         !plan_->filter_predicate_
+              ->Evaluate(tuple, GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())->schema_)
+              .GetAs<bool>();
 }
 
 }  // namespace bustub

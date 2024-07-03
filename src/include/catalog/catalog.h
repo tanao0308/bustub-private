@@ -108,7 +108,8 @@ struct IndexInfo {
  * use by executors within the DBMS execution engine. It handles
  * table creation, table lookup, index creation, and index lookup.
  */
-// Catalog 类是数据库管理系统（DBMS）执行引擎中用于管理表和索引的非持久化目录。该类负责表的创建、表的查找、索引的创建和索引的查找等操作。
+// Catalog
+// 类是数据库管理系统（DBMS）执行引擎中用于管理表和索引的非持久化目录。该类负责表的创建、表的查找、索引的创建和索引的查找等操作。
 class Catalog {
  public:
   /** Indicates that an operation returning a `TableInfo*` failed */

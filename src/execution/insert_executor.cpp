@@ -18,28 +18,41 @@ namespace bustub {
 
 InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *plan,
                                std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(child_executor) {}
+    : AbstractExecutor(exec_ctx), plan_(plan) {
+  child_executor_ = std::move(child_executor);
+}
 
 void InsertExecutor::Init() {
-    
+  has_inserted_ = false;
+  child_executor_->Init();
 }
 
 auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-    auto table_info = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
-    auto schema = ;
-    auto indices = exec_ctx_->GetCatalog()->GetTableIndexes(table_info->name_);
+  if (has_inserted_) {
+    return false;
+  }
+  has_inserted_ = true;
 
-    while(child_executor_->Next(tuple, rid)) {
-        // 增加答案
-        ++count;
-        // 插入记录
-        for(auto &index_info : indices) {
-            
-        }
+  int count = 0;
+  auto table_info = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
+  auto schema = table_info->schema_;
+  auto indices = exec_ctx_->GetCatalog()->GetTableIndexes(table_info->name_);
+
+  while (child_executor_->Next(tuple, rid)) {
+    // 增加答案
+    ++count;
+    // 插入记录
+    std::optional<RID> new_rid_optional = table_info->table_->InsertTuple(TupleMeta{0, false}, *tuple);
+    RID new_rid = new_rid_optional.value();
+    for (auto &index_info : indices) {
+      auto key = tuple->KeyFromTuple(schema, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+      index_info->index_->InsertEntry(key, new_rid, exec_ctx_->GetTransaction());
     }
-    // 这里的 tuple 不再对应实际的数据行，而是用来存储插入操作的影响行数
-    *tuple = Tuple(count, &GetOutputSchema());
-    return true;
+  }
+  // 这里的 tuple 不再对应实际的数据行，而是用来存储插入操作的影响行数
+  std::vector<Value> result = {{TypeId::INTEGER, count}};
+  *tuple = Tuple(result, &GetOutputSchema());
+  return true;
 }
 
 }  // namespace bustub
