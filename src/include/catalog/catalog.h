@@ -41,6 +41,7 @@ enum class IndexType { BPlusTreeIndex, HashTableIndex };
 /**
  * The TableInfo class maintains metadata about a table.
  */
+// 存储表的样式的结构体
 struct TableInfo {
   /**
    * Construct a new TableInfo instance.
@@ -64,6 +65,7 @@ struct TableInfo {
 /**
  * The IndexInfo class maintains metadata about a index.
  */
+// 存储索引的样式的结构体
 struct IndexInfo {
   /**
    * Construct a new IndexInfo instance.
@@ -106,6 +108,7 @@ struct IndexInfo {
  * use by executors within the DBMS execution engine. It handles
  * table creation, table lookup, index creation, and index lookup.
  */
+// Catalog 类是数据库管理系统（DBMS）执行引擎中用于管理表和索引的非持久化目录。该类负责表的创建、表的查找、索引的创建和索引的查找等操作。
 class Catalog {
  public:
   /** Indicates that an operation returning a `TableInfo*` failed */

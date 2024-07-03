@@ -14,6 +14,7 @@
 
 namespace bustub {
 
+// 生成 *表名.列名* 的字符串，并返回
 auto SeqScanPlanNode::InferScanSchema(const BoundBaseTableRef &table) -> Schema {
   std::vector<Column> schema;
   for (const auto &column : table.schema_.GetColumns()) {

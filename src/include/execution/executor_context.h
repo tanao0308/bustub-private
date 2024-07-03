@@ -38,6 +38,8 @@ class ExecutorContext {
    * @param bpm The buffer pool manager that the executor uses
    * @param txn_mgr The transaction manager that the executor uses
    * @param lock_mgr The lock manager that the executor uses
+     ExecutorContext 是一个上下文类，它为执行查询的事务提供必要的资源和信息，
+        如事务对象、目录、缓冲池管理器、事务管理器和锁管理器
    */
   ExecutorContext(Transaction *transaction, Catalog *catalog, BufferPoolManager *bpm, TransactionManager *txn_mgr,
                   LockManager *lock_mgr, bool is_delete)
@@ -60,6 +62,8 @@ class ExecutorContext {
   auto GetTransaction() const -> Transaction * { return transaction_; }
 
   /** @return the catalog */
+  // 这个Catalog至关重要，存储了一个数据库的全部表格信息的索引，提供了对表格的操作。
+  // 只有这个Catalog是我们可能会用到的，比如在seq_scan中需要利用它获取目标表
   auto GetCatalog() -> Catalog * { return catalog_; }
 
   /** @return the buffer pool manager */

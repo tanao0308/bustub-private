@@ -26,6 +26,9 @@ namespace bustub {
  * InsertExecutor executes an insert on a table.
  * Inserted values are always pulled from a child executor.
  */
+// update 和 insert 的返回值 int 是对 sql 中该 sql 语句影响的行数，
+// 比如你插入一条数据，成功的话 sql 会提示1行代码收影响，返回的 int 是1
+// 所以 insert 插入的是子节点所有的数据，返回的是 int 类型
 class InsertExecutor : public AbstractExecutor {
  public:
   /**
@@ -49,7 +52,7 @@ class InsertExecutor : public AbstractExecutor {
    * NOTE: InsertExecutor::Next() does not use the `rid` out-parameter.
    * NOTE: InsertExecutor::Next() returns true with number of inserted rows produced only once.
    */
-  auto Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool override;
+  auto Next(Tuple *tuple, RID *rid) -> bool override;
 
   /** @return The output schema for the insert */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
@@ -57,6 +60,8 @@ class InsertExecutor : public AbstractExecutor {
  private:
   /** The insert plan node to be executed*/
   const InsertPlanNode *plan_;
+
+  std::unique_ptr<AbstractExecutor> child_executor_;
 };
 
 }  // namespace bustub

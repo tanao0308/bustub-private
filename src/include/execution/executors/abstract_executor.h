@@ -37,6 +37,8 @@ class AbstractExecutor {
    * Initialize the executor.
    * @warning This function must be called before Next() is called!
    */
+  // 每个执行器需要初始化的东西都不一样，一般是初始化指向表头的迭代器指针，或者自己定义的一些辅助循环的值
+  // 拿seq_scan来说，就需要在这里将迭代器指针指向表头。
   virtual void Init() = 0;
 
   /**
@@ -45,9 +47,12 @@ class AbstractExecutor {
    * @param[out] rid The next tuple RID produced by this executor
    * @return `true` if a tuple was produced, `false` if there are no more tuples
    */
+  // 需要做到调用一次next就输出且只输出一组tuple的功能，输出是通过赋值*tuple参数，并return true
+  // 如果没有能输出的了，return false
   virtual auto Next(Tuple *tuple, RID *rid) -> bool = 0;
 
   /** @return The schema of the tuples that this executor produces */
+  // Schema相当于存储了表的表头名字，OutputSchema用来指出此节点需要输出哪些列（哪些表头需要考虑在内）
   virtual auto GetOutputSchema() const -> const Schema & = 0;
 
   /** @return The executor context in which this executor runs */
