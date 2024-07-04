@@ -58,6 +58,7 @@ class UpdatePlanNode : public AbstractPlanNode {
   table_oid_t table_oid_;
 
   /** The new expression at each column */
+  // 这里 target_expressions_ 的大小是列的个数，含义是对选中的那些行，每一列分别做怎样的更新
   std::vector<AbstractExpressionRef> target_expressions_;
 
  protected:
