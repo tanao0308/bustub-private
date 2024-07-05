@@ -61,6 +61,7 @@ class Schema {
    * @param col_name name of column to look for
    * @return the index of a column with the given name, throws an exception if it does not exist
    */
+  // 用列名查找列号，无列名则报错
   auto GetColIdx(const std::string &col_name) const -> uint32_t {
     if (auto col_idx = TryGetColIdx(col_name)) {
       return *col_idx;

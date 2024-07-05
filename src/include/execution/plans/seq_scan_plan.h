@@ -34,6 +34,8 @@ class SeqScanPlanNode : public AbstractPlanNode {
    * @param output The output schema of this sequential scan plan node
    * @param table_oid The identifier of table to be scanned
    */
+  // filter_predicate_ 是一个谓词（predicate），通常是一个布尔表达式或函数，用于决定数据行是否满足特定条件。
+  // 在数据库查询计划中，谓词用于过滤数据。
   SeqScanPlanNode(SchemaRef output, table_oid_t table_oid, std::string table_name,
                   AbstractExpressionRef filter_predicate = nullptr)
       : AbstractPlanNode(std::move(output), {}),

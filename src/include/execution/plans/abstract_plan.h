@@ -69,6 +69,7 @@ class AbstractPlanNode {
    * @param output_schema The schema for the output of this plan node
    * @param children The children of this plan node
    */
+  // output_schema: Next() 输出的元组的形式
   AbstractPlanNode(SchemaRef output_schema, std::vector<AbstractPlanNodeRef> children)
       : output_schema_(std::move(output_schema)), children_(std::move(children)) {}
 
