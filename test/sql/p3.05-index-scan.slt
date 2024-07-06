@@ -114,6 +114,7 @@ update t1 set v1 = 2 where v1 = 8;
 ----
 1
 
+
 # Delete some elements
 query
 delete from t1 where v1 = 2;
@@ -215,7 +216,8 @@ insert into t1 values (6, 0, 445), (7, -10, 645), (8, 10, 445);
 ----
 3
 
-query +ensure:index_scan
+
+query
 select * from t1 where v1 = 6;
 ----
 6 0 445

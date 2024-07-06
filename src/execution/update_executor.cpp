@@ -36,31 +36,35 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   int count = 0;
   auto schema = table_info_->schema_;
   auto indices = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
-  while (child_executor_->Next(tuple, rid)) {
+  Tuple old_tuple{};
+  RID old_rid{};
+  while (child_executor_->Next(&old_tuple, &old_rid)) {
     // 试图找到此条记录，若未找到，则不更新也不计数
-    auto meta = table_info_->table_->GetTupleMeta(*rid);
+    auto meta = table_info_->table_->GetTupleMeta(old_rid);
     if (meta.is_deleted_) {
       continue;
     }
     // 找到后将 meta 标记为删除
-    table_info_->table_->UpdateTupleMeta(TupleMeta{0, true}, *rid);
+    table_info_->table_->UpdateTupleMeta(TupleMeta{0, true}, old_rid);
 
     // 计算新tuple
     std::vector<Value> values;
     values.reserve(GetOutputSchema().GetColumnCount());
     for (auto &target_expression : plan_->target_expressions_) {
-      //      std::cout << "target_expression: " << target_expression->ToString() << std::endl;
-      values.push_back(target_expression->Evaluate(tuple, schema));
+      values.push_back(target_expression->Evaluate(&old_tuple, schema));
     }
-    *tuple = Tuple(values, &schema);
+    Tuple new_tuple = Tuple(values, &schema);
 
     // 插入新纪录
-    std::optional<RID> new_rid_optional = table_info_->table_->InsertTuple(TupleMeta{0, false}, *tuple);
+    std::optional<RID> new_rid_optional = table_info_->table_->InsertTuple(TupleMeta{0, false}, new_tuple);
     RID new_rid = new_rid_optional.value();
+
     // 更新索引
     for (auto &index_info : indices) {
-      auto key = tuple->KeyFromTuple(schema, index_info->key_schema_, index_info->index_->GetKeyAttrs());
-      index_info->index_->InsertEntry(key, new_rid, exec_ctx_->GetTransaction());
+      auto old_key = old_tuple.KeyFromTuple(schema, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+      auto new_key = new_tuple.KeyFromTuple(schema, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+      index_info->index_->DeleteEntry(old_key, old_rid, exec_ctx_->GetTransaction());
+      index_info->index_->InsertEntry(new_key, new_rid, exec_ctx_->GetTransaction());
     }
     ++count;
   }

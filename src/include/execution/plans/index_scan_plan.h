@@ -59,11 +59,13 @@ class IndexScanPlanNode : public AbstractPlanNode {
    * For Fall 2023, after you implemented seqscan to indexscan optimizer rule,
    * we can use this predicate to do index point lookup
    */
+  // predicate: 谓词  predict: 预测
   AbstractExpressionRef filter_predicate_;
 
   /**
    * The constant value key to lookup.
    * For example when dealing "WHERE v = 1" we could store the constant value 1 here
+   * 存储 v = 1 中的 1
    */
   const ConstantValueExpression *pred_key_;
 

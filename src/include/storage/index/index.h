@@ -97,6 +97,7 @@ class IndexMetadata {
   /** The name of the table on which the index is created */
   std::string table_name_;
   /** The mapping relation between key schema and tuple schema */
+  // key_attrs_[i] 表示组合索引的第 i 条对应表的第 key_attrs_[i] 列
   const std::vector<uint32_t> key_attrs_;
   /** The schema of the indexed key */
   std::shared_ptr<Schema> key_schema_;

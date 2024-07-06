@@ -99,6 +99,11 @@ class Tuple {
   auto GetValue(const Schema *schema, uint32_t column_idx) const -> Value;
 
   // Generates a key tuple given schemas and attributes
+  /** schema 是整个元组（行）的模式，包括所有列及其数据类型。
+      key_schema 是索引键的模式，包括作为索引键的列及其数据类型。
+      key_attrs 是一个向量，存储了索引键在元组中的列索引。
+      函数作用是将当前 tuple(行) 转化为筛选了索引的行。
+  */
   auto KeyFromTuple(const Schema &schema, const Schema &key_schema, const std::vector<uint32_t> &key_attrs) -> Tuple;
 
   // Is the column value null ?
@@ -116,7 +121,7 @@ class Tuple {
   auto GetDataPtr(const Schema *schema, uint32_t column_idx) const -> const char *;
 
   RID rid_{};  // if pointing to the table heap, the rid is valid
-  std::vector<char> data_;
+  std::vector<char> data_; // 以字节存数据
 };
 
 }  // namespace bustub

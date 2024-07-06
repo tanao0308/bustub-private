@@ -29,9 +29,6 @@ auto Optimizer::OptimizeMergeFilterScan(const AbstractPlanNodeRef &plan) -> Abst
     if (child_plan.GetType() == PlanType::SeqScan) {
       const auto &seq_scan_plan = dynamic_cast<const SeqScanPlanNode &>(child_plan);
       if (seq_scan_plan.filter_predicate_ == nullptr) {
-        // 此时需要判断是优化为 SeqScanPlan 还是 IndexScanPlan
-        // 根据项目描述，仅需处理 “谓词是一个相等性测试” 这种情况(e.g. v1=1)
-        if (filter_plan.GetPredicate())
         return std::make_shared<SeqScanPlanNode>(filter_plan.output_schema_, seq_scan_plan.table_oid_,
                                                  seq_scan_plan.table_name_, filter_plan.GetPredicate());
       }
