@@ -29,8 +29,7 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     return false;
   }
   has_scaned_ = true;
-return false;
-/*
+
   // 首先，找到目标的 RID
   // 将 plan 中的 pred_key_ 重新组装，获取用于查找的 key
   auto key_index = Tuple(std::vector<Value>{plan_->pred_key_->val_}, &index_info_->key_schema_);
@@ -49,7 +48,7 @@ return false;
   }
   *tuple = meta_and_tuple.second;
   return true;
-*/
+
 }
 
 }  // namespace bustub
