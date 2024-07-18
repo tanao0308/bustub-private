@@ -35,7 +35,9 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   has_deleted_ = true;
 
   int count = 0;
-  auto indices = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
+  auto indexes = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
+  auto schema = table_info_->schema_;
+
   while (child_executor_->Next(tuple, rid)) {
     // 试图找到此条记录，若未找到，则不更新也不计数
     auto meta = table_info_->table_->GetTupleMeta(*rid);
@@ -44,6 +46,13 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     }
     // 找到后将 meta 标记为删除
     table_info_->table_->UpdateTupleMeta(TupleMeta{0, true}, *rid);
+
+    // 更新索引
+    for (auto &index_info : indexes) {
+      auto key = tuple->KeyFromTuple(schema, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+      index_info->index_->DeleteEntry(key, *rid, exec_ctx_->GetTransaction());
+    }
+
     ++count;
   }
 
