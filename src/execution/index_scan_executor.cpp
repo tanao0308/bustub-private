@@ -13,7 +13,7 @@
 
 namespace bustub {
 IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanPlanNode *plan)
-    : AbstractExecutor(exec_ctx), plan_(plan), index_info_(nullptr), htable_(nullptr) {}
+    : AbstractExecutor(exec_ctx), plan_(plan) {}
 
 void IndexScanExecutor::Init() {
   has_scaned_ = false;
@@ -25,7 +25,7 @@ void IndexScanExecutor::Init() {
 
 // 利用索引快速查找
 auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-  if(has_scaned_) {
+  if (has_scaned_) {
     return false;
   }
   has_scaned_ = true;
@@ -37,18 +37,16 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   htable_->ScanKey(key_index, &result, exec_ctx_->GetTransaction());
 
   // 找到 RID 后，找出对应的行的数据
-  if(result.empty()) {
+  if (result.empty()) {
     return false;
   }
   *rid = *result.begin();
   auto meta_and_tuple = exec_ctx_->GetCatalog()->GetTable(plan_->table_oid_)->table_->GetTuple(*rid);
-  if(meta_and_tuple.first.is_deleted_) {
-    std::cout<<"deleted!!!"<<std::endl;
+  if (meta_and_tuple.first.is_deleted_) {
     return false;
   }
   *tuple = meta_and_tuple.second;
   return true;
-
 }
 
 }  // namespace bustub

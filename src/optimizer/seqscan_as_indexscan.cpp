@@ -1,8 +1,8 @@
 #include "execution/expressions/column_value_expression.h"
 #include "execution/expressions/comparison_expression.h"
 #include "execution/expressions/constant_value_expression.h"
-#include "execution/plans/seq_scan_plan.h"
 #include "execution/plans/index_scan_plan.h"
+#include "execution/plans/seq_scan_plan.h"
 #include "optimizer/optimizer.h"
 
 namespace bustub {
@@ -41,16 +41,18 @@ auto Optimizer::OptimizeSeqScanAsIndexScan(const bustub::AbstractPlanNodeRef &pl
   // 判断列是否是索引，若是则进行优化
   auto col_idx = std::dynamic_pointer_cast<ColumnValueExpression>(pred_children[0])->GetColIdx();
   auto column = catalog_.GetTable(seq_plan.table_name_)->schema_.GetColumn(col_idx);
-  auto indexes = catalog_.GetTableIndexes(seq_plan.table_name_); // std::vector<IndexInfo *>
-  for(auto *index_info : indexes) {
+  auto indexes = catalog_.GetTableIndexes(seq_plan.table_name_);  // std::vector<IndexInfo *>
+  for (auto *index_info : indexes) {
     auto schema = index_info->index_->GetKeySchema();
-    if(schema->GetColumnCount() != 1){
-        continue;
+    if (schema->GetColumnCount() != 1) {
+      continue;
     }
-    if(schema->TryGetColIdx(column.GetName()) != std::nullopt) {
-        auto pred_key = std::dynamic_pointer_cast<ConstantValueExpression>(pred_children[1]);
-        ConstantValueExpression *raw_pred_key = pred_key ? pred_key.get() : nullptr;
-        return std::make_shared<IndexScanPlanNode>(seq_plan.output_schema_, seq_plan.GetTableOid(), index_info->index_oid_, predicate, raw_pred_key);// (TODO)返回优化后的节点！！！
+    if (schema->TryGetColIdx(column.GetName()) != std::nullopt) {
+      auto pred_key = std::dynamic_pointer_cast<ConstantValueExpression>(pred_children[1]);
+      ConstantValueExpression *raw_pred_key = pred_key ? pred_key.get() : nullptr;
+      return std::make_shared<IndexScanPlanNode>(seq_plan.output_schema_, seq_plan.GetTableOid(),
+                                                 index_info->index_oid_, predicate,
+                                                 raw_pred_key);  // (TODO)返回优化后的节点！！！
     }
   }
 
