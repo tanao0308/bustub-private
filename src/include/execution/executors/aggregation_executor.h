@@ -71,13 +71,61 @@ class SimpleAggregationHashTable {
    * @param input The input value
    */
   void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
+    result->aggregates_.clear();
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
       switch (agg_types_[i]) {
-        case AggregationType::CountStarAggregate:
-        case AggregationType::CountAggregate:
+        case AggregationType::CountStarAggregate:  // COUNT(*) 用于计算某个表中的所有行数，不考虑是否有 NULL 值。
+          result->aggregates_.emplace_back(TypeId::INTEGER, input.aggregates_.size());
+          break;
+
+        case AggregationType::CountAggregate:  // COUNT(column_name) 用来统计指定列中非 NULL 值的数量。
+          int count = 0;
+          for (const auto &value : input.aggregates_) {
+            if (!value.IsNull()) {
+              count++;
+            }
+          }
+          result->aggregates_.emplace_back(TypeId::INTEGER, count);
+          break;
+
         case AggregationType::SumAggregate:
+          int64_t sum = 0;
+          // 若入参非空且入参可加，则进行加法
+          if (!input.aggregates_.empty() && input.aggregates_[0].GetTypeId() != TypeId::VARCHAR &&
+              input.aggregates_[0].GetTypeId() != TypeId::TIMESTAMP) {
+            for (const auto &value : input.aggregates_) {
+              if (!value.IsNull()) {
+                sum += value.GetAs<int64_t>();
+              }
+            }
+          }
+          result->aggregates_.emplace_back(TypeId::BIGINT, count);
+          break;
+
         case AggregationType::MinAggregate:
+          if (input.aggregates_.empty()) {
+            break;
+          }
+          const Value *minn = nullptr;
+          for (const auto &value : input.aggregates_) {
+            if (minn == nullptr || minn->CompareLessThan(value) == CmpBool::CmpTrue) {
+              minn = &value;
+            }
+          }
+          result->aggregates_.emplace_back(*minn);
+          break;
+
         case AggregationType::MaxAggregate:
+          if (input.aggregates_.empty()) {
+            break;
+          }
+          const Value *maxx = nullptr;
+          for (const auto &value : input.aggregates_) {
+            if (maxx == nullptr || minn->CompareGreaterThan(value) == CmpBool::CmpTrue) {
+              maxx = &value;
+            }
+          }
+          result->aggregates_.emplace_back(*maxx);
           break;
       }
     }
@@ -203,9 +251,9 @@ class AggregationExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> child_executor_;
 
   /** Simple aggregation hash table */
-  // TODO(Student): Uncomment SimpleAggregationHashTable aht_;
+  SimpleAggregationHashTable aht_;
 
   /** Simple aggregation hash table iterator */
-  // TODO(Student): Uncomment SimpleAggregationHashTable::Iterator aht_iterator_;
+  SimpleAggregationHashTable::Iterator aht_iterator_;
 };
 }  // namespace bustub

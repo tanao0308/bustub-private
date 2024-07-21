@@ -18,11 +18,17 @@ namespace bustub {
 
 AggregationExecutor::AggregationExecutor(ExecutorContext *exec_ctx, const AggregationPlanNode *plan,
                                          std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx) {}
+    : AbstractExecutor(exec_ctx), plan_(plan), aht_(plan_->aggregates_, plan_->agg_types_), aht_iterator_(aht_.Begin()) {}
 
 void AggregationExecutor::Init() {}
 
-auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool { return false; }
+// 实现“聚合”功能
+auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+
+
+
+  return true;
+}
 
 auto AggregationExecutor::GetChildExecutor() const -> const AbstractExecutor * { return child_executor_.get(); }
 

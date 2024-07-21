@@ -52,7 +52,7 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   }
 
   // 这里的 tuple 不再对应实际的数据行，而是用来存储插入操作的影响行数
-  std::vector<Value> result = {{TypeId::INTEGER, count}};
+  std::vector<Value> result = {Value(TypeId::INTEGER, count)};
   *tuple = Tuple(result, &GetOutputSchema());
   return true;
 }
