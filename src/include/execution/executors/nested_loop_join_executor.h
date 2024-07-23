@@ -13,9 +13,6 @@
 #pragma once
 
 #include <memory>
-#include <utility>
-
-#include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/nested_loop_join_plan.h"
 #include "storage/table/tuple.h"
@@ -30,7 +27,7 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   /**
    * Construct a new NestedLoopJoinExecutor instance.
    * @param exec_ctx The executor context
-   * @param plan The nested loop join plan to be executed
+   * @param plan The NestedLoop join plan to be executed
    * @param left_executor The child executor that produces tuple for the left side of join
    * @param right_executor The child executor that produces tuple for the right side of join
    */
@@ -55,6 +52,12 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const NestedLoopJoinPlanNode *plan_;
+  /** 左表子执行器，对于循环连接操作来说通常是左表上的 Scan 执行器 */
+  std::unique_ptr<AbstractExecutor> left_executor_;
+  /** 右表子执行器，对于循环连接操作来说通常是右表上的 Scan 执行器 */
+  std::unique_ptr<AbstractExecutor> right_executor_;
+  /** 连接结果集 */
+  std::queue<Tuple> results_;
 };
 
 }  // namespace bustub

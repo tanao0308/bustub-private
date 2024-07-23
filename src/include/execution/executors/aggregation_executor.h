@@ -27,7 +27,6 @@
 #include "type/value_factory.h"
 
 namespace bustub {
-
 /**
  * A simplified hash table that has all the necessary functionality for aggregations.
  */
@@ -64,71 +63,87 @@ class SimpleAggregationHashTable {
   }
 
   /**
-   * TODO(Student)
-   *
    * Combines the input into the aggregation result.
    * @param[out] result The output aggregate value
    * @param input The input value
    */
   void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
-    result->aggregates_.clear();
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
+      auto &result_value = result->aggregates_[i];
+      auto &input_value = input.aggregates_[i];
       switch (agg_types_[i]) {
-        case AggregationType::CountStarAggregate:  // COUNT(*) 用于计算某个表中的所有行数，不考虑是否有 NULL 值。
-          result->aggregates_.emplace_back(TypeId::INTEGER, input.aggregates_.size());
+        case AggregationType::CountStarAggregate:
+          // count(*) 对每一行都执行 +1 操作
+          result_value = result_value.Add(ValueFactory::GetIntegerValue(1));
           break;
-
-        case AggregationType::CountAggregate:  // COUNT(column_name) 用来统计指定列中非 NULL 值的数量。
-          int count = 0;
-          for (const auto &value : input.aggregates_) {
-            if (!value.IsNull()) {
-              count++;
+        case AggregationType::CountAggregate:
+          // count(column) 只对非空行进行 +1 操作，同时 bustub 不支持 count(distinct column) 聚合操作
+          if (!input_value.IsNull()) {
+            // 如果 result_value 为空需要从 ValueFactory 中获取
+            if (result_value.IsNull()) {
+              result_value = ValueFactory::GetIntegerValue(0);
             }
+            result_value = result_value.Add(ValueFactory::GetIntegerValue(1));
           }
-          result->aggregates_.emplace_back(TypeId::INTEGER, count);
           break;
-
         case AggregationType::SumAggregate:
-          int64_t sum = 0;
-          // 若入参非空且入参可加，则进行加法
-          if (!input.aggregates_.empty() && input.aggregates_[0].GetTypeId() != TypeId::VARCHAR &&
-              input.aggregates_[0].GetTypeId() != TypeId::TIMESTAMP) {
-            for (const auto &value : input.aggregates_) {
-              if (!value.IsNull()) {
-                sum += value.GetAs<int64_t>();
-              }
+          // sum(column) 只处理非空行
+          if (!input_value.IsNull()) {
+            // 如果 result_value 为空初始化为 input_value ，否则直接累加
+            if (result_value.IsNull()) {
+              result_value = input_value;
+            } else {
+              result_value = result_value.Add(input_value);
             }
           }
-          result->aggregates_.emplace_back(TypeId::BIGINT, count);
           break;
-
         case AggregationType::MinAggregate:
-          if (input.aggregates_.empty()) {
-            break;
-          }
-          const Value *minn = nullptr;
-          for (const auto &value : input.aggregates_) {
-            if (minn == nullptr || minn->CompareLessThan(value) == CmpBool::CmpTrue) {
-              minn = &value;
+          // min(column) 只处理非空行
+          if (!input_value.IsNull()) {
+            // 如果 result_value 为空初始化为 input_value ，否则取最小值
+            if (result_value.IsNull()) {
+              result_value = input_value;
+            } else {
+              result_value = result_value.Min(input_value);
             }
           }
-          result->aggregates_.emplace_back(*minn);
           break;
-
         case AggregationType::MaxAggregate:
-          if (input.aggregates_.empty()) {
-            break;
-          }
-          const Value *maxx = nullptr;
-          for (const auto &value : input.aggregates_) {
-            if (maxx == nullptr || minn->CompareGreaterThan(value) == CmpBool::CmpTrue) {
-              maxx = &value;
+          // max(column) 只处理非空行
+          if (!input_value.IsNull()) {
+            // 如果 result_value 为空初始化为 input_value ，否则取最大值
+            if (result_value.IsNull()) {
+              result_value = input_value;
+            } else {
+              result_value = result_value.Max(input_value);
             }
           }
-          result->aggregates_.emplace_back(*maxx);
           break;
+        default:
+          throw Exception("unknown AggregationType");
       }
     }
+  }
+
+  /**
+   * 检查当前表是否为空，如果为空生成默认的聚合值，对于 count(*) 来说是 0，对于其他聚合函数来说是 integer_null
+   * 等指定了具体类型的空值。 之所以要进行这次额外检查，是因为空表的聚合操作不是没有返回值，而是返回了一个默认的聚合值。
+   *
+   * @param[out] value 对应于不同聚合操作生成的初始聚合值。
+   * @return `true` 当前表为空，需要返回一个初始聚合值，`false` 不需要返回初始聚合值。
+   */
+  auto CheckIsNullTable(AggregateValue *value) -> bool {
+    // 从未检查过或者表不为空
+    if (is_checked_ || !ht_.empty()) {
+      return false;
+    }
+
+    is_checked_ = true;
+    // 遍历聚合表达式列表，为每个聚合函数生成初始的聚合值
+    for (size_t i = 0; i < agg_exprs_.size(); i++) {
+      *value = GenerateInitialAggregateValue();
+    }
+    return true;
   }
 
   /**
@@ -190,6 +205,8 @@ class SimpleAggregationHashTable {
   const std::vector<AbstractExpressionRef> &agg_exprs_;
   /** The types of aggregations that we have */
   const std::vector<AggregationType> &agg_types_;
+  /** 标识是否进行过空表检查 */
+  bool is_checked_ = false;
 };
 
 /**
@@ -205,7 +222,7 @@ class AggregationExecutor : public AbstractExecutor {
    * @param child_executor The child executor from which inserted tuples are pulled (may be `nullptr`)
    */
   AggregationExecutor(ExecutorContext *exec_ctx, const AggregationPlanNode *plan,
-                      std::unique_ptr<AbstractExecutor> &&child_executor);
+                      std::unique_ptr<AbstractExecutor> &&child);
 
   /** Initialize the aggregation */
   void Init() override;
@@ -219,41 +236,27 @@ class AggregationExecutor : public AbstractExecutor {
   auto Next(Tuple *tuple, RID *rid) -> bool override;
 
   /** @return The output schema for the aggregation */
-  auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
+  auto GetOutputSchema() const -> const Schema & override;
 
   /** Do not use or remove this function, otherwise you will get zero points. */
   auto GetChildExecutor() const -> const AbstractExecutor *;
 
  private:
   /** @return The tuple as an AggregateKey */
-  auto MakeAggregateKey(const Tuple *tuple) -> AggregateKey {
-    std::vector<Value> keys;
-    for (const auto &expr : plan_->GetGroupBys()) {
-      keys.emplace_back(expr->Evaluate(tuple, child_executor_->GetOutputSchema()));
-    }
-    return {keys};
-  }
+  auto MakeAggregateKey(const Tuple *tuple) -> AggregateKey;
 
   /** @return The tuple as an AggregateValue */
-  auto MakeAggregateValue(const Tuple *tuple) -> AggregateValue {
-    std::vector<Value> vals;
-    for (const auto &expr : plan_->GetAggregates()) {
-      vals.emplace_back(expr->Evaluate(tuple, child_executor_->GetOutputSchema()));
-    }
-    return {vals};
-  }
+  auto MakeAggregateValue(const Tuple *tuple) -> AggregateValue;
 
  private:
   /** The aggregation plan node */
   const AggregationPlanNode *plan_;
-
   /** The child executor that produces tuples over which the aggregation is computed */
-  std::unique_ptr<AbstractExecutor> child_executor_;
-
+  std::unique_ptr<AbstractExecutor> child_;
   /** Simple aggregation hash table */
   SimpleAggregationHashTable aht_;
-
   /** Simple aggregation hash table iterator */
   SimpleAggregationHashTable::Iterator aht_iterator_;
 };
+
 }  // namespace bustub
