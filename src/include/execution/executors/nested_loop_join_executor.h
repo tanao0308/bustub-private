@@ -56,6 +56,7 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> left_executor_;
   /** 右表子执行器，对于循环连接操作来说通常是右表上的 Scan 执行器 */
   std::unique_ptr<AbstractExecutor> right_executor_;
+  bool is_initialized_{false};
   /** 连接结果集 */
   std::queue<Tuple> results_;
 };
