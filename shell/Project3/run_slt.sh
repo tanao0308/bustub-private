@@ -1,3 +1,3 @@
 cd ../../build
 make -j$(nproc) sqllogictest
-./bin/bustub-sqllogictest ../test/sql/p3.16-sort-limit.slt --verbose
+./bin/bustub-sqllogictest ../test/sql/p3.17-topn.slt --verbose

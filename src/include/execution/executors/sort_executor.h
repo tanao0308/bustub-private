@@ -50,8 +50,7 @@ class SortExecutor : public AbstractExecutor {
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); }
 
  private:
-
- auto Cmp(const Tuple& left, const Tuple& right) const -> bool;
+  auto Cmp(const Tuple &left, const Tuple &right) const -> bool;
 
   /** The sort plan node to be executed */
   const SortPlanNode *plan_;

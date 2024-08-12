@@ -14,13 +14,13 @@
 
 #include <memory>
 #include <utility>
-#include <vector>
 
-#include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/seq_scan_plan.h"
 #include "execution/plans/topn_plan.h"
 #include "storage/table/tuple.h"
+
+#include <stack>
 
 namespace bustub {
 
@@ -59,9 +59,37 @@ class TopNExecutor : public AbstractExecutor {
   auto GetNumInHeap() -> size_t;
 
  private:
+  /** 定义堆的比较结构体 */
+  struct Cmp {
+    const TopNPlanNode *plan_;
+
+    explicit Cmp(const TopNPlanNode *plan) : plan_(plan) {}
+
+    auto operator()(const Tuple &left_tuple, const Tuple &right_tuple) const -> bool {
+      Schema schema = plan_->OutputSchema();
+      for (auto &cond : plan_->GetOrderBy()) {
+        OrderByType order_by = cond.first;
+        AbstractExpressionRef abstract_expression = cond.second;
+        Value left_value = abstract_expression->Evaluate(&left_tuple, schema);
+        Value right_value = abstract_expression->Evaluate(&right_tuple, schema);
+        if (left_value.CompareExactlyEquals(right_value)) {
+          continue;
+        }
+        return ((order_by == OrderByType::ASC || order_by == OrderByType::DEFAULT) &&
+                left_value.CompareLessThan(right_value) == CmpBool::CmpTrue) ||
+               (order_by == OrderByType::DESC && left_value.CompareLessThan(right_value) == CmpBool::CmpFalse);
+      }
+      return true;
+    }
+  };
+
   /** The TopN plan node to be executed */
   const TopNPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  // 防止重复 init
+  bool has_executed_{false};
+  /** 倒序堆，以 Cmp 逆序排序，这样可以保留最大元素 */
+  std::stack<Tuple> tuples_;
 };
 }  // namespace bustub
