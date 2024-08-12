@@ -108,8 +108,6 @@ auto DiskExtendibleHashTable<K, V, KC>::GetValue(const K &key, std::vector<V> *r
 
 template <typename K, typename V, typename KC>
 auto DiskExtendibleHashTable<K, V, KC>::Insert(const K &key, const V &value, Transaction *transaction) -> bool {
-  LOG_DEBUG("here");
-  std::cout << "key=" << key << ", value=" << value << std::endl;
   std::lock_guard<std::mutex> lock(latch_);
 
   // 确保不插入重复的元素
@@ -164,7 +162,6 @@ auto DiskExtendibleHashTable<K, V, KC>::Insert(const K &key, const V &value, Tra
 template <typename K, typename V, typename KC>
 void DiskExtendibleHashTable<K, V, KC>::NewDirectory(ExtendibleHTableHeaderPage *header, uint32_t directory_idx,
                                                      uint32_t hash) {
-  // LOG_DEBUG("here");
   // 新建一个directory_page
   page_id_t directory_page_id;
   BasicPageGuard basic_directory_guard = bpm_->NewPageGuarded(&directory_page_id);
@@ -190,7 +187,6 @@ template <typename K, typename V, typename KC>
 auto DiskExtendibleHashTable<K, V, KC>::SpliteBucket(ExtendibleHTableDirectoryPage *directory,
                                                      ExtendibleHTableBucketPage<K, V, KC> *bucket, uint32_t bucket_idx)
     -> bool {
-  // LOG_DEBUG("here");
   // 判断是否能继续分裂
   uint32_t global_depth = directory->GetGlobalDepth();
   uint32_t local_depth = directory->GetLocalDepth(bucket_idx);
@@ -266,9 +262,7 @@ auto DiskExtendibleHashTable<K, V, KC>::SpliteBucket(ExtendibleHTableDirectoryPa
 
 template <typename K, typename V, typename KC>
 void DiskExtendibleHashTable<K, V, KC>::MergeBucket(ExtendibleHTableDirectoryPage *directory, uint32_t bucket_idx) {
-  // LOG_DEBUG("here");
   // 如果是directory的唯一bucket，那无需merge
-  std::cout << "bucket_idx=" << bucket_idx << " " << directory->GetGlobalDepth() << std::endl;
   if (directory->GetGlobalDepth() == 0) {
     return;
   }
@@ -322,8 +316,6 @@ void DiskExtendibleHashTable<K, V, KC>::MergeBucket(ExtendibleHTableDirectoryPag
  *****************************************************************************/
 template <typename K, typename V, typename KC>
 auto DiskExtendibleHashTable<K, V, KC>::Remove(const K &key, Transaction *transaction) -> bool {
-  LOG_DEBUG("here");
-  std::cout << "key=" << key << std::endl;
   std::lock_guard<std::mutex> lock(latch_);
 
   // 若不存在则不能删除

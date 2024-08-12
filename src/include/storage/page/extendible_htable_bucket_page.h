@@ -74,7 +74,7 @@ class ExtendibleHTableBucketPage {
    * @param cmp the comparator
    * @return true if the key and value are present, false if not found.
 
-         如果找到指定的键，并成功设置了输出参数 value，则返回 true。
+     如果找到指定的键，并成功设置了输出参数 value，则返回 true。
      如果未找到指定的键，则返回 false。
    */
   auto Lookup(const KeyType &key, ValueType &value, const KeyComparator &cmp) const -> bool;

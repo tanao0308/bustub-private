@@ -26,8 +26,7 @@ namespace bustub {
 class Schema;
 using SchemaRef = std::shared_ptr<const Schema>;
 
-// Schema
-// 类通常在数据库系统中使用，用于描述数据表的结构。它包含关于表中每一列的元数据，如列名、数据类型、偏移量、是否内联等信息
+// Schema 类通常在数据库系统中使用，用于描述数据表的结构。它包含关于表中每一列的元数据，如列名、数据类型、偏移量、是否内联等信息
 class Schema {
  public:
   /**
