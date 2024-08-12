@@ -9,6 +9,9 @@ auto Watermark::AddTxn(timestamp_t read_ts) -> void {
     throw Exception("read ts < commit ts");
   }
 
+  if(current_reads_.empty()) {
+    watermark_ = read_ts;
+  }
   current_reads_[read_ts]++;
 }
 

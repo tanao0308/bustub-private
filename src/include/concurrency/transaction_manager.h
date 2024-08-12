@@ -147,6 +147,7 @@ class TransactionManager {
   /** Catalog */
   Catalog *catalog_;
 
+  /** 下一个新事务的 id */
   std::atomic<txn_id_t> next_txn_id_{TXN_START_ID};
 
  private:

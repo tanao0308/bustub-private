@@ -38,13 +38,16 @@ namespace bustub {
 auto TransactionManager::Begin(IsolationLevel isolation_level) -> Transaction * {
   // 读锁，多读单写
   std::unique_lock<std::shared_mutex> l(txn_map_mutex_);
+  // 获取当前事务 id
   auto txn_id = next_txn_id_++;
   auto txn = std::make_unique<Transaction>(txn_id, isolation_level);
   auto *txn_ref = txn.get();
+  // 将当前事务放入全局 map 中
   txn_map_.insert(std::make_pair(txn_id, std::move(txn)));
 
-  // load() 方法提供了一种安全的方式来从原子类型读取值，并且通常不会导致性能上的显著损失。
-  txn_ref->read_ts_ = next_txn_id_.load();
+  // TODO(fall2023): set the timestamps here. Watermark updated below.
+  // 当前事务的 read timestamp 为最近提交的 commit timestamp
+  txn_ref->read_ts_ = running_txns_.commit_ts_;
 
   running_txns_.AddTxn(txn_ref->read_ts_);
   return txn_ref;
@@ -55,8 +58,8 @@ auto TransactionManager::VerifyTxn(Transaction *txn) -> bool { return true; }
 auto TransactionManager::Commit(Transaction *txn) -> bool {
   std::unique_lock<std::mutex> commit_lck(commit_mutex_);
 
-  next_txn_id_++;
-  txn->commit_ts_ = next_txn_id_.load();
+  // TODO(fall2023): acquire commit ts!
+  auto commit_ts = ++last_commit_ts_;
 
   if (txn->state_ != TransactionState::RUNNING) {
     throw Exception("txn not in running state");
@@ -75,6 +78,8 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
   std::unique_lock<std::shared_mutex> lck(txn_map_mutex_);
 
   // TODO(fall2023): set commit timestamp + update last committed timestamp here.
+  // load() 方法提供了一种安全的方式来从原子类型读取值，并且通常不会导致性能上的显著损失。
+  txn->commit_ts_ = commit_ts;
 
   txn->state_ = TransactionState::COMMITTED;
   // 移除此事务开始时间戳意味着事务结束了，所以需要更新 commit_ts_
