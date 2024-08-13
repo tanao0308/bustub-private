@@ -60,5 +60,7 @@ class SeqScanExecutor : public AbstractExecutor {
   std::unique_ptr<TableIterator> iter_;
 
   auto PassFilter(Tuple *tuple) -> bool;
+
+  auto PassVersion(RID *rid) -> std::optional<Tuple>;
 };
 }  // namespace bustub

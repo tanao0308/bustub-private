@@ -12,25 +12,25 @@ namespace bustub {
 
 auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const TupleMeta &base_meta,
                       const std::vector<UndoLog> &undo_logs) -> std::optional<Tuple> {
-  if((!undo_logs.empty() && undo_logs.back().is_deleted_) || (undo_logs.empty() && base_meta.is_deleted_)) {
+  if ((!undo_logs.empty() && undo_logs.back().is_deleted_) || (undo_logs.empty() && base_meta.is_deleted_)) {
     return std::nullopt;
   }
   std::vector<Value> data;
-  for(size_t i=0; i<schema->GetColumnCount(); ++i) {
+  for (size_t i = 0; i < schema->GetColumnCount(); ++i) {
     data.push_back(base_tuple.GetValue(schema, i));
   }
 
-  for(auto undo_log : undo_logs) {
+  for (auto undo_log : undo_logs) {
     std::vector<uint32_t> attrs;
-    for(size_t i=0; i<schema->GetColumnCount(); ++i) {
-      if(undo_log.modified_fields_.at(i)) {
+    for (size_t i = 0; i < schema->GetColumnCount(); ++i) {
+      if (undo_log.modified_fields_.at(i)) {
         attrs.push_back(i);
       }
     }
     Schema temp_schema = Schema::CopySchema(schema, attrs);
-    int cnt=0;
-    for(size_t i=0; i<schema->GetColumnCount(); ++i) {
-      if(!undo_log.modified_fields_.at(i)) {
+    int cnt = 0;
+    for (size_t i = 0; i < schema->GetColumnCount(); ++i) {
+      if (!undo_log.modified_fields_.at(i)) {
         continue;
       }
       data.at(i) = undo_log.tuple_.GetValue(&temp_schema, cnt);
@@ -65,7 +65,5 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
   //   txn6@0 (6, <NULL>, <NULL>) ts=2
   //   txn3@1 (7, _, _) ts=1
 }
-
-
 
 }  // namespace bustub
