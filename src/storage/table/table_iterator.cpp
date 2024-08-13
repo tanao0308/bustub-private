@@ -46,6 +46,7 @@ auto TableIterator::operator++() -> TableIterator & {
   auto page = page_guard.As<TablePage>();
   auto next_tuple_id = rid_.GetSlotNum() + 1;
 
+  // 判断当前 rid_ 是否越界
   if (stop_at_rid_.GetPageId() != INVALID_PAGE_ID) {
     BUSTUB_ASSERT(
         /* case 1: cursor before the page of the stop tuple */ rid_.GetPageId() < stop_at_rid_.GetPageId() ||

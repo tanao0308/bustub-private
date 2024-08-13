@@ -28,6 +28,7 @@ namespace bustub {
 
 TableHeap::TableHeap(BufferPoolManager *bpm) : bpm_(bpm) {
   // Initialize the first table page.
+  // 将第一页设置为最新的一页
   auto guard = bpm->NewPageGuarded(&first_page_id_);
   last_page_id_ = first_page_id_;
   auto first_page = guard.AsMut<TablePage>();
@@ -42,6 +43,7 @@ auto TableHeap::InsertTuple(const TupleMeta &meta, const Tuple &tuple, LockManag
                             table_oid_t oid) -> std::optional<RID> {
   std::unique_lock<std::mutex> guard(latch_);
   auto page_guard = bpm_->FetchPageWrite(last_page_id_);
+  // 此 while 最多执行两次
   while (true) {
     auto page = page_guard.AsMut<TablePage>();
     if (page->GetNextTupleOffset(meta, tuple) != std::nullopt) {

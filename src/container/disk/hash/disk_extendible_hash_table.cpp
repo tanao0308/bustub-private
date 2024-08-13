@@ -369,6 +369,7 @@ auto DiskExtendibleHashTable<K, V, KC>::Remove(const K &key, Transaction *transa
 这样可以避免每次使用模板类时都需要重新实例化。
 */
 template class DiskExtendibleHashTable<int, int, IntComparator>;
+// 通过主键找到外存位置
 template class DiskExtendibleHashTable<GenericKey<4>, RID, GenericComparator<4>>;
 template class DiskExtendibleHashTable<GenericKey<8>, RID, GenericComparator<8>>;
 template class DiskExtendibleHashTable<GenericKey<16>, RID, GenericComparator<16>>;

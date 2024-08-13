@@ -132,6 +132,7 @@ class TableHeap {
   /** Used for binder tests */
   explicit TableHeap(bool create_table_heap = false);
 
+  // [first_page_id_, last_page_id_] 表示此表在外存里数据存放的范围（区间内可能有其他表的数据页或者其他索引页，不过总范围是这个）
   BufferPoolManager *bpm_;
   page_id_t first_page_id_{INVALID_PAGE_ID};
 

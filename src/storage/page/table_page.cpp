@@ -36,7 +36,9 @@ auto TablePage::GetNextTupleOffset(const TupleMeta &meta, const Tuple &tuple) co
   } else {
     slot_end_offset = BUSTUB_PAGE_SIZE;
   }
+  // slot_end_offset 是新数据的起始页内偏移量 - 1
   auto tuple_offset = slot_end_offset - tuple.GetLength();
+  // offset_size 是块头部被占用的字节数
   auto offset_size = TABLE_PAGE_HEADER_SIZE + TUPLE_INFO_SIZE * (num_tuples_ + 1);
   if (tuple_offset < offset_size) {
     return std::nullopt;
