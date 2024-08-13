@@ -51,29 +51,50 @@ auto SeqScanExecutor::PassFilter(Tuple *tuple) -> bool {
 
 auto SeqScanExecutor::PassVersion(RID *rid) -> std::optional<Tuple> {
   Transaction *transaction = exec_ctx_->GetTransaction();
-  transaction->GetUndoLog(); // 获取当前事务的某条 undolog
   TransactionManager *txn_mgr = exec_ctx_->GetTransactionManager();
   std::optional<UndoLink> undoLink = txn_mgr->GetUndoLink(*rid);
-  if(!undoLink.has_value()) {
-    return std::nullopt; // TODO 返回什么值
-  }
-  txn_id_t prev_txn = undoLink->prev_txn_;
 
-  // 处理情况二，上次修改是本事务进行的修改
-  for(size_t i=transaction->GetUndoLogNum()-1; i!=0; ++i) {
+  if(!undoLink.has_value()) {
+    return std::nullopt;
+  }
+  UndoLog undo_log = txn_mgr->txn_map_.at(undoLink.value().prev_txn_)->GetUndoLog(undoLink.value().prev_txn_);
+  // 如果是最新记录，则直接返回
+  if(undo_log.ts_ < transaction->GetReadTs()) {
+    return undo_log.tuple_;
+  }
+  // 如果是本次记录，则直接返回
+  if(undo_log.ts_ == transaction)
+
+
+  // >>>>>>>
+  // 对于一条记录，有链式的 undolog
+  UndoLink undoLink1 = txn_mgr->GetUndoLink(*rid).value();
+  UndoLog undo_log1 = txn_mgr->txn_map_.at(undoLink1.prev_txn_)->GetUndoLog(undoLink1.prev_log_idx_);
+  UndoLink undoLink2 = undo_log1.prev_version_;
+  UndoLog undo_log2 = txn_mgr->txn_map_.at(undoLink2.prev_txn_)->GetUndoLog(undoLink2.prev_log_idx_);
+
+
+  // <<<<<<<
+
+
+  Schema schema = plan_->OutputSchema();
+  std::pair<TupleMeta, Tuple> base_pair = table_heap_->GetTuple(*rid);
+  TupleMeta base_meta = base_pair.first;
+  Tuple base_tuple = base_pair.second;
+  std::vector<UndoLog> undo_logs;
+
+  for(size_t i=0; i<transaction->GetUndoLogNum(); ++i) {
     UndoLog undo_log = transaction->GetUndoLog(i);
     if(undo_log.tuple_.GetRid() == *rid) {
-      return undo_log.is_deleted_ ? std::nullopt : undo_log.tuple_;
+      undo_logs.push_back(undo_log);
     }
   }
-  // 处理情况一，上一个提交的事务，结束时间戳 <= 本事务开始时间戳
-  if(txn_mgr->txn_map_.at(prev_txn)->GetCommitTs() <= transaction->GetReadTs()) {
-    std::pair<TupleMeta, Tuple> temp_pair = table_heap_->GetTuple(*rid);
-    return temp_pair.first.is_deleted_ ? std::nullopt : temp_pair.second;
+  // 上次修改是本事务进行的修改 && 上一个提交的事务结束时间戳 <= 本事务开始时间戳
+  if(!undo_logs.empty() ||
+    (undo_logs.empty() && (prev_txn == TXN_START_ID - 1 ||txn_mgr->txn_map_.at(prev_txn)->GetCommitTs() <= transaction->GetReadTs()))) {
+    return ReconstructTuple(&schema, base_tuple, base_meta, undo_logs);
   }
-
-  transaction->GetReadTs(); // 当前事务的开始时间戳
-  // 1. 当前记录是被此事务修改过的
+  // 上一个提交的事务开始时间戳 >
 
 
   return std::nullopt;
