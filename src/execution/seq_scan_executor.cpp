@@ -25,79 +25,60 @@ void SeqScanExecutor::Init() {
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-  // TupleMeta meta;
   std::optional<Tuple> opt_tuple;
-  do {
-    if (iter_->IsEnd()) {
-      return false;
+  while (!iter_->IsEnd()) {
+    // 计算出此事务能看到的 tuple
+    opt_tuple = PassVersion(iter_->GetRID());
+
+    // 若满足 tuple 存在且值通过筛选，则返回
+    if (opt_tuple.has_value() && PassFilter(&opt_tuple.value())) {
+      *tuple = opt_tuple.value();
+      *rid = opt_tuple.value().GetRid();
+      ++(*iter_);
+      return true;
     }
-    opt_tuple = PassVersion(rid);
-    // meta = iter_->GetTuple().first;
-    // if (!meta.is_deleted_) {
-    //   *tuple = iter_->GetTuple().second;
-    //   *rid = iter_->GetRID();
-    // }
     ++(*iter_);
-  } while (opt_tuple == std::nullopt || PassFilter(&opt_tuple.value()));
-  return true;
+  }
+  return false;
 }
 
 auto SeqScanExecutor::PassFilter(Tuple *tuple) -> bool {
-  return plan_->filter_predicate_ != nullptr &&
-         !plan_->filter_predicate_
-              ->Evaluate(tuple, GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())->schema_)
-              .GetAs<bool>();
+  return plan_->filter_predicate_ == nullptr ||
+         plan_->filter_predicate_
+             ->Evaluate(tuple, GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())->schema_)
+             .GetAs<bool>();
 }
 
-auto SeqScanExecutor::PassVersion(RID *rid) -> std::optional<Tuple> {
+auto SeqScanExecutor::PassVersion(RID rid) -> std::optional<Tuple> {
+  // 获取事务、事务管理器、本条数据的 undolog 链表头
   Transaction *transaction = exec_ctx_->GetTransaction();
   TransactionManager *txn_mgr = exec_ctx_->GetTransactionManager();
-  std::optional<UndoLink> undoLink = txn_mgr->GetUndoLink(*rid);
-
-  if(!undoLink.has_value()) {
+  if (!txn_mgr->GetUndoLink(rid).has_value()) {
     return std::nullopt;
   }
-  UndoLog undo_log = txn_mgr->txn_map_.at(undoLink.value().prev_txn_)->GetUndoLog(undoLink.value().prev_txn_);
-  // 如果是最新记录，则直接返回
-  if(undo_log.ts_ < transaction->GetReadTs()) {
-    return undo_log.tuple_;
+  std::pair<TupleMeta, Tuple> base_pair = table_heap_->GetTuple(rid);
+
+  // 如果是最新记录或本次记录，则直接返回
+  if (base_pair.first.ts_ <= transaction->GetReadTs() || base_pair.first.ts_ == transaction->GetTransactionId()) {
+    return table_heap_->GetTuple(rid).second;
   }
-  // 如果是本次记录，则直接返回
-  if(undo_log.ts_ == transaction)
 
-
-  // >>>>>>>
-  // 对于一条记录，有链式的 undolog
-  UndoLink undoLink1 = txn_mgr->GetUndoLink(*rid).value();
-  UndoLog undo_log1 = txn_mgr->txn_map_.at(undoLink1.prev_txn_)->GetUndoLog(undoLink1.prev_log_idx_);
-  UndoLink undoLink2 = undo_log1.prev_version_;
-  UndoLog undo_log2 = txn_mgr->txn_map_.at(undoLink2.prev_txn_)->GetUndoLog(undoLink2.prev_log_idx_);
-
-
-  // <<<<<<<
-
-
-  Schema schema = plan_->OutputSchema();
-  std::pair<TupleMeta, Tuple> base_pair = table_heap_->GetTuple(*rid);
-  TupleMeta base_meta = base_pair.first;
-  Tuple base_tuple = base_pair.second;
+  UndoLink undo_link = txn_mgr->GetUndoLink(rid).value();
+  UndoLog undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
+  undo_link = undo_log.prev_version_;
+  // 否则需要找到能读的版本，处理之后进行返回
   std::vector<UndoLog> undo_logs;
-
-  for(size_t i=0; i<transaction->GetUndoLogNum(); ++i) {
-    UndoLog undo_log = transaction->GetUndoLog(i);
-    if(undo_log.tuple_.GetRid() == *rid) {
-      undo_logs.push_back(undo_log);
+  undo_logs.push_back(undo_log);
+  while (undo_log.ts_ > transaction->GetReadTs() && undo_log.ts_ != transaction->GetTransactionId()) {
+    if (!undo_link.IsValid()) {
+      // 这里不能 break 吗？why？
+      return std::nullopt;
     }
+    undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
+    undo_link = undo_log.prev_version_;
+    undo_logs.push_back(undo_log);
   }
-  // 上次修改是本事务进行的修改 && 上一个提交的事务结束时间戳 <= 本事务开始时间戳
-  if(!undo_logs.empty() ||
-    (undo_logs.empty() && (prev_txn == TXN_START_ID - 1 ||txn_mgr->txn_map_.at(prev_txn)->GetCommitTs() <= transaction->GetReadTs()))) {
-    return ReconstructTuple(&schema, base_tuple, base_meta, undo_logs);
-  }
-  // 上一个提交的事务开始时间戳 >
-
-
-  return std::nullopt;
+  return ReconstructTuple(&plan_->OutputSchema(), base_pair.second, base_pair.first, undo_logs);
 }
 
 }  // namespace bustub
