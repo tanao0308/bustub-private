@@ -63,7 +63,7 @@ auto SeqScanExecutor::PassVersion(RID rid) -> std::optional<Tuple> {
   // 如果是最新记录或本次记录，则直接返回
   if (base_pair.first.ts_ <= transaction->GetReadTs() || base_pair.first.ts_ == transaction->GetTransactionId()) {
     LOG_DEBUG("return 2");
-    return table_heap_->GetTuple(rid).second;
+    return ReconstructTuple(&plan_->OutputSchema(), base_pair.second, base_pair.first, {});
   }
 
   UndoLink undo_link = txn_mgr->GetUndoLink(rid).value();

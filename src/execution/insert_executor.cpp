@@ -40,8 +40,11 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
 
   while (child_executor_->Next(tuple, rid)) {
     // 插入记录
-    std::optional<RID> new_rid_optional = table_info->table_->InsertTuple(TupleMeta{0, false}, *tuple);
-    RID new_rid = new_rid_optional.value();
+    RID new_rid = table_info->table_->InsertTuple(TupleMeta{0, false}, *tuple).value();
+    UndoLog undo_log;
+    undo_log.is_deleted_ = true;
+    undo_log.modified_fields_={};
+    undo_log.ts_ =
     // 更新索引
     for (auto &index_info : indexes) {
       auto key = tuple->KeyFromTuple(schema, index_info->key_schema_, index_info->index_->GetKeyAttrs());
@@ -50,10 +53,8 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     // 增加答案
     ++count;
   }
-
   // 这里的 tuple 不再对应实际的数据行，而是用来存储插入操作的影响行数
-  std::vector<Value> result = {Value(TypeId::INTEGER, count)};
-  *tuple = Tuple(result, &GetOutputSchema());
+  *tuple = Tuple({Value(TypeId::INTEGER, count)}, &GetOutputSchema());
   return true;
 }
 

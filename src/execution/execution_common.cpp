@@ -1,4 +1,5 @@
 #include "execution/execution_common.h"
+#include <iomanip>
 #include "catalog/catalog.h"
 #include "common/config.h"
 #include "common/macros.h"
@@ -40,50 +41,74 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
   return Tuple(data, schema);
 }
 
-auto GetSchema(Tuple raw_tuple, std::vector<bool> modified_fields, Schema schema)->Schema {
-  std::vector<Column> columns;
-  for(size_t i=0;i<schema.GetColumnCount();++i) {
-    if(modified_fields.at(i)) {
-      columns.push_back(schema.GetColumn(i));
+auto GetCompleteTuple(const Tuple &raw_tuple, std::vector<bool> modified_fields, const Schema &schema) -> std::string {
+  std::stringstream os;
+  bool first = true;
+  os << "(";
+  for (size_t i = 0, cnt = 0; i < schema.GetColumnCount(); i++) {
+    if (first) {
+      first = false;
+    } else {
+      os << ", ";
     }
+    if (!modified_fields.at(i)) {
+      os << "_";
+      continue;
+    }
+    if (raw_tuple.IsNull(&schema, i)) {
+      os << "<NULL>";
+      continue;
+    }
+    Value val = (raw_tuple.GetValue(&schema, cnt++));
+    os << val.ToString();
   }
-  return Schema(columns);
+  os << ")";
+
+  return os.str();
 }
 
 void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const TableInfo *table_info,
                TableHeap *table_heap) {
   // always use stderr for printing logs...
-  std::cout<<">>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+  std::cout << ">>>>>>>>>>>>>>>>>>>>>" << std::endl;
   fmt::println(stderr, "debug_hook: {}", info);
-  std::cout<<"table name: "<<table_info->name_<<std::endl;
-  std::cout<<"table schema: "<<table_info->schema_.ToString()<<std::endl;
+  std::cout << "table name: " << table_info->name_ << std::endl;
+  std::cout << "table schema: " << table_info->schema_.ToString() << std::endl;
   TableIterator iter = table_heap->MakeIterator();
   while (!iter.IsEnd()) {
     RID rid = iter.GetRID();
     ++iter;
     std::pair<TupleMeta, Tuple> base_pair = table_heap->GetTuple(rid);
-    // TODO
-    std::cout<<"\tRID="<<rid.GetPageId()<<"/"<<rid.GetSlotNum()<<" ts="<<(base_pair.first.ts_>=TXN_START_ID?base_pair.first.ts_-TXN_START_ID:base_pair.first.ts_)<<" is_delete="<<base_pair.first.is_deleted_
-      <<" tuple="<<base_pair.second.ToString(&table_info->schema_)<<std::endl;
+    std::cout << "\t"
+              << " RID=" << rid.GetPageId() << "/" << rid.GetSlotNum()
+              << " ts=" << (base_pair.first.ts_ >= TXN_START_ID ? "txn" : "") << base_pair.first.ts_ % TXN_START_ID
+              << " is_delete=" << base_pair.first.is_deleted_
+              << " tuple=" << base_pair.second.ToString(&table_info->schema_) << std::endl;
 
     UndoLink undo_link = txn_mgr->GetUndoLink(rid).value();
-    if(!undo_link.IsValid()) {
+    if (!undo_link.IsValid()) {
       continue;
     }
     UndoLog undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
-    while(true) {
-      Schema temp_schema = GetSchema(undo_log.tuple_, undo_log.modified_fields_, table_info->schema_);
-
-      std::cout<<"\t\ttxn"<<undo_link.prev_txn_<<" is_delete="<<undo_log.is_deleted_<<" ts="<<undo_log.ts_
-        <<" tuple="<<undo_log.tuple_.ToString(&temp_schema)<<std::endl;
+    std::vector<UndoLog> undo_logs;
+    while (true) {
+      undo_logs.push_back(undo_log);
+      std::optional<Tuple> temp_tuple =
+          ReconstructTuple(&table_info->schema_, base_pair.second, base_pair.first, undo_logs);
+      std::cout << "\t\t"
+                << " ts=" << undo_log.ts_ << " is_delete=" << undo_log.is_deleted_ << " txn"
+                << undo_link.prev_txn_ - TXN_START_ID
+                << " tuple=" << GetCompleteTuple(undo_log.tuple_, undo_log.modified_fields_, table_info->schema_)
+                << " true tuple=" << (temp_tuple.has_value() ? temp_tuple->ToString(&table_info->schema_) : "deleted")
+                << std::endl;
       undo_link = undo_log.prev_version_;
-      if(!undo_link.IsValid()) {
+      if (!undo_link.IsValid()) {
         break;
       }
       undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
     }
   }
-  std::cout<<">>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+  std::cout << ">>>>>>>>>>>>>>>>>>>>>" << std::endl;
   // We recommend implementing this function as traversing the table heap and print the version chain. An example output
   // of our reference solution:
   //

@@ -85,6 +85,7 @@ auto TransactionManager::GetVersionLink(RID rid) -> std::optional<VersionUndoLin
   return std::make_optional(iter2->second);
 }
 
+// 获取这条记录的 undolog 链表头节点（最新）
 auto TransactionManager::GetUndoLink(RID rid) -> std::optional<UndoLink> {
   auto version_link = GetVersionLink(rid);
   if (version_link.has_value()) {
