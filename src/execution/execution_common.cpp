@@ -40,16 +40,50 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
   return Tuple(data, schema);
 }
 
+auto GetSchema(Tuple raw_tuple, std::vector<bool> modified_fields, Schema schema)->Schema {
+  std::vector<Column> columns;
+  for(size_t i=0;i<schema.GetColumnCount();++i) {
+    if(modified_fields.at(i)) {
+      columns.push_back(schema.GetColumn(i));
+    }
+  }
+  return Schema(columns);
+}
+
 void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const TableInfo *table_info,
                TableHeap *table_heap) {
   // always use stderr for printing logs...
+  std::cout<<">>>>>>>>>>>>>>>>>>>>>"<<std::endl;
   fmt::println(stderr, "debug_hook: {}", info);
+  std::cout<<"table name: "<<table_info->name_<<std::endl;
+  std::cout<<"table schema: "<<table_info->schema_.ToString()<<std::endl;
+  TableIterator iter = table_heap->MakeIterator();
+  while (!iter.IsEnd()) {
+    RID rid = iter.GetRID();
+    ++iter;
+    std::pair<TupleMeta, Tuple> base_pair = table_heap->GetTuple(rid);
+    // TODO
+    std::cout<<"\tRID="<<rid.GetPageId()<<"/"<<rid.GetSlotNum()<<" ts="<<(base_pair.first.ts_>=TXN_START_ID?base_pair.first.ts_-TXN_START_ID:base_pair.first.ts_)<<" is_delete="<<base_pair.first.is_deleted_
+      <<" tuple="<<base_pair.second.ToString(&table_info->schema_)<<std::endl;
 
-  fmt::println(
-      stderr,
-      "You see this line of text because you have not implemented `TxnMgrDbg`. You should do this once you have "
-      "finished task 2. Implementing this helper function will save you a lot of time for debugging in later tasks.");
+    UndoLink undo_link = txn_mgr->GetUndoLink(rid).value();
+    if(!undo_link.IsValid()) {
+      continue;
+    }
+    UndoLog undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
+    while(true) {
+      Schema temp_schema = GetSchema(undo_log.tuple_, undo_log.modified_fields_, table_info->schema_);
 
+      std::cout<<"\t\ttxn"<<undo_link.prev_txn_<<" is_delete="<<undo_log.is_deleted_<<" ts="<<undo_log.ts_
+        <<" tuple="<<undo_log.tuple_.ToString(&temp_schema)<<std::endl;
+      undo_link = undo_log.prev_version_;
+      if(!undo_link.IsValid()) {
+        break;
+      }
+      undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
+    }
+  }
+  std::cout<<">>>>>>>>>>>>>>>>>>>>>"<<std::endl;
   // We recommend implementing this function as traversing the table heap and print the version chain. An example output
   // of our reference solution:
   //
