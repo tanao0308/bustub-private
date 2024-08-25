@@ -38,7 +38,7 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
       cnt++;
     }
   }
-  return Tuple(data, schema);
+  return std::make_optional(Tuple(data, schema));
 }
 
 auto GetCompleteTuple(const Tuple &raw_tuple, std::vector<bool> modified_fields, const Schema &schema) -> std::string {
@@ -70,7 +70,7 @@ auto GetCompleteTuple(const Tuple &raw_tuple, std::vector<bool> modified_fields,
 void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const TableInfo *table_info,
                TableHeap *table_heap) {
   // always use stderr for printing logs...
-  std::cout << ">>>>>>>>>>>>>>>>>>>>>" << std::endl;
+  std::cout << ">>>>>>>>>>START>>>>>>>>>>>" << std::endl;
   fmt::println(stderr, "debug_hook: {}", info);
   std::cout << "table name: " << table_info->name_ << std::endl;
   std::cout << "table schema: " << table_info->schema_.ToString() << std::endl;
@@ -85,10 +85,11 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
               << " is_delete=" << base_pair.first.is_deleted_
               << " tuple=" << base_pair.second.ToString(&table_info->schema_) << std::endl;
 
-    UndoLink undo_link = txn_mgr->GetUndoLink(rid).value();
-    if (!undo_link.IsValid()) {
+    std::optional<UndoLink> undo_link_optional = txn_mgr->GetUndoLink(rid);
+    if (!undo_link_optional.has_value() || !undo_link_optional.value().IsValid()) {
       continue;
     }
+    UndoLink undo_link = undo_link_optional.value();
     UndoLog undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
     std::vector<UndoLog> undo_logs;
     while (true) {
@@ -108,7 +109,7 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
       undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
     }
   }
-  std::cout << ">>>>>>>>>>>>>>>>>>>>>" << std::endl;
+  std::cout << ">>>>>>>>>>END>>>>>>>>>>>" << std::endl;
   // We recommend implementing this function as traversing the table heap and print the version chain. An example output
   // of our reference solution:
   //
