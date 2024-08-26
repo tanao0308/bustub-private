@@ -46,13 +46,14 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   while (child_executor_->Next(tuple, rid)) {
     // 试图找到此条记录，若未找到，则不更新也不计数
     std::pair<TupleMeta, Tuple> base_pair = table_info_->table_->GetTuple(*rid);
-    if (base_pair.first.is_deleted_) {
-      continue;
-    }
-    // 如果当前记录已被其他未结束的事务修改过，则抛出异常
-    if (base_pair.first.ts_ >= TXN_START_ID && base_pair.first.ts_ != txn) {
+    // 如果当前记录 1.正在被另一个事务修改 2.已被比自己晚开始且已提交的事务删除 则抛出异常
+    if ((base_pair.first.ts_ >= TXN_START_ID || base_pair.first.ts_ > exec_ctx_->GetTransaction()->GetReadTs()) &&
+        base_pair.first.ts_ != txn) {
       exec_ctx_->GetTransaction()->SetTainted();
       throw ExecutionException("write-write conflict: updated");
+    }
+    if (base_pair.first.is_deleted_) {
+      continue;
     }
     buffer.emplace_back(*rid);
   }
@@ -77,10 +78,9 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     ++count;
 
     // TODO(tanao): 接下来为 P4 任务
-    // 判断此记录之前是否存在过，若之前存在，则直接在上面改
+    // 判断此记录当前事务是否之前修改过，若之前修改过，则直接在上面改
     if (old_base_pair.first.ts_ == txn) {
       auto prev_undo_link_optional = exec_ctx_->GetTransactionManager()->GetUndoLink(old_rid);
-
       // 此条修改的是之前没 undo_log 的条目，则改数据即可
       if (!prev_undo_link_optional.has_value() || !prev_undo_link_optional->IsValid()) {
         continue;
@@ -89,12 +89,9 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       int log_idx = prev_undo_link_optional.value().prev_log_idx_;
       UndoLog undo_log = exec_ctx_->GetTransaction()->GetUndoLog(log_idx);
       Tuple old_old_tuple;
-      if (undo_log.is_deleted_) {
-        undo_log.modified_fields_.assign(schema.GetColumnCount(), false);
-      } else {
-        old_old_tuple = ReconstructTuple(&schema, old_base_pair.second, old_base_pair.first, {undo_log}).value();
-        GenerateUndolog(schema, old_old_tuple, new_tuple, undo_log.modified_fields_, undo_log.tuple_);
-      }
+      // if (undo_log.is_deleted_) ? 不可能吧
+      old_old_tuple = ReconstructTuple(&schema, old_base_pair.second, old_base_pair.first, {undo_log}).value();
+      GenerateUndolog(schema, old_old_tuple, new_tuple, undo_log.modified_fields_, undo_log.tuple_);
       exec_ctx_->GetTransaction()->ModifyUndoLog(log_idx, undo_log);
       // 无需修改 undo_link
     }
@@ -102,7 +99,7 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     else {
       auto prev_undo_link_optional = exec_ctx_->GetTransactionManager()->GetUndoLink(old_rid);
       UndoLog undo_log;
-      undo_log.is_deleted_ = false;
+      undo_log.is_deleted_ = old_base_pair.first.is_deleted_;
       undo_log.ts_ = old_base_pair.first.ts_;
       if (prev_undo_link_optional.has_value()) {
         undo_log.prev_version_ = prev_undo_link_optional.value();
@@ -116,34 +113,11 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       undo_link.prev_log_idx_ = exec_ctx_->GetTransaction()->GetUndoLogNum() - 1;
       exec_ctx_->GetTransactionManager()->UpdateUndoLink(old_rid, undo_link);
     }
+    exec_ctx_->GetTransaction()->AppendWriteSet(plan_->GetTableOid(), old_rid);
   }
   // 返回答案
   *tuple = Tuple({Value(TypeId::INTEGER, count)}, &GetOutputSchema());
   return true;
-}
-
-// 此函数作用：给出从 new_tuple 到 old_tuple 的变换掩码和值: modified_fields, tuple
-// 只能对付 old new 都非删除的情况
-void UpdateExecutor::GenerateUndolog(const Schema &schema, const Tuple &old_tuple, const Tuple &new_tuple,
-                                     std::vector<bool> &modified_fields, Tuple &tuple) {
-  // modified_fields.clear();
-  std::vector<Value> values;
-  std::vector<Column> columns;
-  for (size_t i = 0; i < schema.GetColumnCount(); ++i) {
-    Value old_value = old_tuple.GetValue(&schema, i);
-    Value new_value = new_tuple.GetValue(&schema, i);
-    // 后一句是为了 "we ask you to keep the undo log unchanged – only adding more data to undo log but not removing
-    // data,
-    //             so as to make it easier to handle concurrency issues."
-    if (old_value.CompareExactlyEquals(new_value) && !modified_fields.at(i)) {
-      continue;
-    }
-    modified_fields.at(i) = true;
-    values.push_back(old_value);
-    columns.push_back(schema.GetColumn(i));
-  }
-  Schema temp_schema(columns);
-  tuple = Tuple(values, &temp_schema);
 }
 
 }  // namespace bustub

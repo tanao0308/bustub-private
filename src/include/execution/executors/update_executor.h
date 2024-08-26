@@ -68,8 +68,5 @@ class UpdateExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> child_executor_;
 
   bool has_updated_;
-
-  void GenerateUndolog(const Schema &schema, const Tuple &old_tuple, const Tuple &new_tuple,
-                       std::vector<bool> &modified_fields, Tuple &tuple);
 };
 }  // namespace bustub

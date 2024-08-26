@@ -41,6 +41,30 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
   return std::make_optional(Tuple(data, schema));
 }
 
+// 此函数作用：给出从 new_tuple 到 old_tuple 的变换掩码和值: modified_fields, tuple
+// 只能对付 old new 都非删除的情况
+void GenerateUndolog(const Schema &schema, const Tuple &old_tuple, const Tuple &new_tuple,
+                     std::vector<bool> &modified_fields, Tuple &tuple) {
+  // modified_fields.clear();
+  std::vector<Value> values;
+  std::vector<Column> columns;
+  for (size_t i = 0; i < schema.GetColumnCount(); ++i) {
+    Value old_value = old_tuple.GetValue(&schema, i);
+    Value new_value = new_tuple.GetValue(&schema, i);
+    // 后一句是为了 "we ask you to keep the undo log unchanged – only adding more data to undo log but not removing
+    // data,
+    //             so as to make it easier to handle concurrency issues."
+    if (old_value.CompareExactlyEquals(new_value) && !modified_fields.at(i)) {
+      continue;
+    }
+    modified_fields.at(i) = true;
+    values.push_back(old_value);
+    columns.push_back(schema.GetColumn(i));
+  }
+  Schema temp_schema(columns);
+  tuple = Tuple(values, &temp_schema);
+}
+
 auto GetCompleteTuple(const Tuple &raw_tuple, std::vector<bool> modified_fields, const Schema &schema) -> std::string {
   // 获取增量的 schema
   std::vector<Column> columns;

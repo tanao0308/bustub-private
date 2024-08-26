@@ -35,7 +35,6 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     // 若满足 tuple 存在且值通过筛选，则返回
     if (tuple_optional.has_value() && PassFilter(&tuple_optional.value())) {
       *tuple = tuple_optional.value();
-      LOG_DEBUG("tuple=%s, rid=%s", tuple->ToString(&plan_->OutputSchema()).c_str(), rid->ToString().c_str());
       return true;
     }
   }
@@ -54,13 +53,11 @@ auto SeqScanExecutor::PassVersion(RID rid) -> std::optional<Tuple> {
   auto base_pair = table_heap_->GetTuple(rid);
   // 如果是最新记录或本次记录，则直接返回
   if (base_pair.first.ts_ <= transaction->GetReadTs() || base_pair.first.ts_ == transaction->GetTransactionId()) {
-    LOG_DEBUG("return 1");
     return ReconstructTuple(&plan_->OutputSchema(), base_pair.second, base_pair.first, {});
   }
 
   TransactionManager *txn_mgr = exec_ctx_->GetTransactionManager();
   if (!txn_mgr->GetUndoLink(rid).has_value()) {
-    LOG_DEBUG("return 2");
     return std::nullopt;
   }
 
@@ -73,14 +70,12 @@ auto SeqScanExecutor::PassVersion(RID rid) -> std::optional<Tuple> {
   while (undo_log.ts_ > transaction->GetReadTs() && undo_log.ts_ != transaction->GetTransactionId()) {
     if (!undo_link.IsValid()) {
       // 这里不能 break 吗？why？
-      LOG_DEBUG("return 3");
       return std::nullopt;
     }
     undo_log = txn_mgr->txn_map_.at(undo_link.prev_txn_)->GetUndoLog(undo_link.prev_log_idx_);
     undo_link = undo_log.prev_version_;
     undo_logs.push_back(undo_log);
   }
-  LOG_DEBUG("return 4");
   return ReconstructTuple(&plan_->OutputSchema(), base_pair.second, base_pair.first, undo_logs);
 }
 
