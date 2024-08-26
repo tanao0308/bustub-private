@@ -74,13 +74,20 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
   }
 
   // TODO(fall2023): Implement the commit logic!
+  // 提交时将事务修改的base的ts设置为较小数
+  auto write_sets = txn->GetWriteSets();
+  for (auto const &rid_set : write_sets) {
+    for (auto const &rid : rid_set.second) {
+      auto table_heap = catalog_->GetTable(rid_set.first)->table_.get();
+      std::pair<TupleMeta, Tuple> base_pair = table_heap->GetTuple(rid);
+      base_pair.first.ts_ = commit_ts;
+      catalog_->GetTable(rid_set.first)->table_->UpdateTupleInPlace(base_pair.first, base_pair.second, rid);
+    }
+  }
 
   std::unique_lock<std::shared_mutex> lck(txn_map_mutex_);
-
   // TODO(fall2023): set commit timestamp + update last committed timestamp here.
-  // load() 方法提供了一种安全的方式来从原子类型读取值，并且通常不会导致性能上的显著损失。
   txn->commit_ts_ = commit_ts;
-
   txn->state_ = TransactionState::COMMITTED;
   // 移除此事务开始时间戳意味着事务结束了，所以需要更新 commit_ts_
   running_txns_.UpdateCommitTs(txn->commit_ts_);

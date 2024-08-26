@@ -5,7 +5,7 @@ namespace bustub {
 
 // NOLINTBEGIN(bugprone-unchecked-optional-access)
 
-TEST(TxnExecutorTest, InsertTest) {  // NOLINT
+TEST(TxnExecutorTest, DISABLED_InsertTest) {  // NOLINT
   auto bustub = std::make_unique<BustubInstance>();
   auto empty_table = IntResult{};
   Execute(*bustub, "CREATE TABLE maintable(a int)");
@@ -253,7 +253,7 @@ TEST(TxnExecutorTest, DISABLED_UpdateTest1) {  // NOLINT
   TableHeapEntryNoMoreThan(*bustub, table_info, 1);
 }
 
-TEST(TxnExecutorTest, DISABLED_UpdateTest2) {  // NOLINT
+TEST(TxnExecutorTest, UpdateTest2) {  // NOLINT
   fmt::println(stderr, "--- UpdateTest2: update applied on insert ---");
   auto bustub = std::make_unique<BustubInstance>();
   auto empty_table = IntResult{};

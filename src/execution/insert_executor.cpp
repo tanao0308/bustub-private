@@ -41,13 +41,8 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   auto indexes = exec_ctx_->GetCatalog()->GetTableIndexes(table_info->name_);
 
   while (child_executor_->Next(tuple, rid)) {
-    // 插入记录
-    UndoLog undo_log;
-    undo_log.is_deleted_ = true;
-    undo_log.modified_fields_ = {};
-    undo_log.ts_ = exec_ctx_->GetTransaction()->GetTransactionId();
-    RID new_rid = table_info->table_->InsertTuple(TupleMeta{undo_log.ts_, false}, *tuple).value();
-    exec_ctx_->GetTransaction()->AppendUndoLog(undo_log);
+    txn_id_t txn = exec_ctx_->GetTransaction()->GetTransactionId();
+    RID new_rid = table_info->table_->InsertTuple(TupleMeta{txn, false}, *tuple).value();
     exec_ctx_->GetTransaction()->AppendWriteSet(plan_->GetTableOid(), new_rid);
     // 更新索引
     for (auto &index_info : indexes) {
@@ -56,7 +51,19 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
     // 增加答案
     ++count;
+
+    // TODO(tanao): 接下来为 P4 任务
+    // UndoLog undo_log;
+    // undo_log.is_deleted_ = true;
+    // undo_log.modified_fields_.assign(schema.GetColumnCount(), false);
+    // undo_log.ts_ = txn;
+    // exec_ctx_->GetTransaction()->AppendUndoLog(undo_log);
+    // UndoLink undo_link;
+    // undo_link.prev_txn_ = txn;
+    // undo_link.prev_log_idx_ = exec_ctx_->GetTransaction()->GetUndoLogNum() - 1;
+    // exec_ctx_->GetTransactionManager()->UpdateUndoLink(new_rid, undo_link);
   }
+
   // 这里的 tuple 不再对应实际的数据行，而是用来存储插入操作的影响行数
   *tuple = Tuple({Value(TypeId::INTEGER, count)}, &GetOutputSchema());
   return true;

@@ -25,16 +25,16 @@ void SeqScanExecutor::Init() {
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-  std::optional<Tuple> opt_tuple;
+  std::optional<Tuple> tuple_optional;
   while (!iter_->IsEnd()) {
     // 计算出此事务能看到的 tuple
-    opt_tuple = PassVersion(iter_->GetRID());
+    *rid = iter_->GetRID();
+    tuple_optional = PassVersion(*rid);
     ++(*iter_);
 
     // 若满足 tuple 存在且值通过筛选，则返回
-    if (opt_tuple.has_value() && PassFilter(&opt_tuple.value())) {
-      *tuple = opt_tuple.value();
-      *rid = opt_tuple.value().GetRid();
+    if (tuple_optional.has_value() && PassFilter(&tuple_optional.value())) {
+      *tuple = tuple_optional.value();
       LOG_DEBUG("tuple=%s, rid=%s", tuple->ToString(&plan_->OutputSchema()).c_str(), rid->ToString().c_str());
       return true;
     }
@@ -50,18 +50,17 @@ auto SeqScanExecutor::PassFilter(Tuple *tuple) -> bool {
 }
 
 auto SeqScanExecutor::PassVersion(RID rid) -> std::optional<Tuple> {
-  LOG_DEBUG("here");
   Transaction *transaction = exec_ctx_->GetTransaction();
-  std::pair<TupleMeta, Tuple> base_pair = table_heap_->GetTuple(rid);
+  auto base_pair = table_heap_->GetTuple(rid);
   // 如果是最新记录或本次记录，则直接返回
   if (base_pair.first.ts_ <= transaction->GetReadTs() || base_pair.first.ts_ == transaction->GetTransactionId()) {
-    LOG_DEBUG("return 2");
+    LOG_DEBUG("return 1");
     return ReconstructTuple(&plan_->OutputSchema(), base_pair.second, base_pair.first, {});
   }
 
   TransactionManager *txn_mgr = exec_ctx_->GetTransactionManager();
   if (!txn_mgr->GetUndoLink(rid).has_value()) {
-    LOG_DEBUG("return 1");
+    LOG_DEBUG("return 2");
     return std::nullopt;
   }
 

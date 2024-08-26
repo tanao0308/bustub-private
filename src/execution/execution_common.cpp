@@ -42,6 +42,15 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
 }
 
 auto GetCompleteTuple(const Tuple &raw_tuple, std::vector<bool> modified_fields, const Schema &schema) -> std::string {
+  // 获取增量的 schema
+  std::vector<Column> columns;
+  for (size_t i = 0; i < schema.GetColumnCount(); i++) {
+    if (modified_fields.at(i)) {
+      columns.push_back(schema.GetColumn(i));
+    }
+  }
+  Schema temp_schema = Schema(columns);
+  // 开始打印
   std::stringstream os;
   bool first = true;
   os << "(";
@@ -55,7 +64,7 @@ auto GetCompleteTuple(const Tuple &raw_tuple, std::vector<bool> modified_fields,
       os << "_";
       continue;
     }
-    if (raw_tuple.IsNull(&schema, i)) {
+    if (raw_tuple.IsNull(&temp_schema, cnt)) {
       os << "<NULL>";
       continue;
     }
@@ -97,8 +106,8 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
       std::optional<Tuple> temp_tuple =
           ReconstructTuple(&table_info->schema_, base_pair.second, base_pair.first, undo_logs);
       std::cout << "\t\t"
-                << " ts=" << undo_log.ts_ << " is_delete=" << undo_log.is_deleted_ << " txn"
-                << undo_link.prev_txn_ - TXN_START_ID
+                << " ts=" << (undo_log.ts_ >= TXN_START_ID ? "txn" : "") << undo_log.ts_ % TXN_START_ID
+                << " is_delete=" << undo_log.is_deleted_ << " txn" << undo_link.prev_txn_ - TXN_START_ID
                 << " tuple=" << GetCompleteTuple(undo_log.tuple_, undo_log.modified_fields_, table_info->schema_)
                 << " true tuple=" << (temp_tuple.has_value() ? temp_tuple->ToString(&table_info->schema_) : "deleted")
                 << std::endl;
